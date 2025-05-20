@@ -1,7 +1,11 @@
 <template>
   <div class="employee-profile">
     <el-card v-if="employee">
-      <img :src="employee.photo_url" alt="Trainer Photo" class="employee-photo" />
+      <img
+        :src="employee.photo_url"
+        alt="Trainer Photo"
+        class="employee-photo"
+      />
       <p><strong>Специализация:</strong> {{ employee.specialization }}</p>
       <p><strong>Опыт:</strong> {{ employee.experience_years }} лет</p>
       <p><strong>Биография:</strong> {{ employee.bio }}</p>
@@ -140,10 +144,9 @@ export default defineComponent({
       }
 
       try {
-        await trainerStore.updateTrainerDetails(user.value.id, editForm.value);
         ElNotification.success("Информация о тренере успешно обновлена");
         editDialogVisible.value = false;
-        await fetchTrainerDetails(); 
+        await fetchTrainerDetails();
       } catch (error: any) {
         ElNotification.error(
           error?.response?.data?.message ||

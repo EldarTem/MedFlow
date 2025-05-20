@@ -115,7 +115,6 @@ export default defineComponent({
         );
         ElNotification.success("Тренировка успешно завершена");
         showCompleteModal.value = false;
-        await workingHoursStore.getTrainerWorkingHours(user.id);
       } catch (error) {
         ElNotification.error("Ошибка при завершении тренировки");
       }
@@ -125,7 +124,6 @@ export default defineComponent({
       try {
         await api.put(`/training-sessions/${session.id}/cancel`);
         ElNotification.success("Тренировка отменена");
-        await workingHoursStore.getTrainerWorkingHours(user.id);
       } catch (error) {
         ElNotification.error("Ошибка при отмене тренировки");
       }
