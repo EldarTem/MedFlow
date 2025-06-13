@@ -79,12 +79,11 @@ export default defineComponent({
         if (!grouped[hour.day_of_week]) {
           grouped[hour.day_of_week] = {
             day: hour.day_of_week,
-            date: "", // Здесь можешь установить конкретную дату, если нужно
+            date: "", 
             slots: [],
           };
         }
 
-        // Преобразуем строку в объект с полями start_time и end_time
         const slot = {
           start_time: hour.start_time,
         };

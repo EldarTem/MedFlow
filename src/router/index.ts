@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import MainLayout from '@/layouts/MainLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 
-const SITE_NAME = 'Очередь';
+const SITE_NAME = 'MedFlow';
 
 const routes: Array<RouteRecordRaw> = [
   { path: '/', redirect: '/login' },
@@ -32,6 +32,12 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true },
     children: [
       {
+        path: 'records',
+        name: 'MyRecords',
+        component: () => import('@/views/MyRecords.vue'),
+        meta: { title: 'Мои записи' },
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/ProfileView.vue'),
@@ -55,41 +61,28 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/DepartmentsView.vue'),
         meta: { title: 'Отделы', allowedRoles: ['super_admin'] },
       },
-
       {
         path: 'not-authorized',
         name: 'NotAuthorized',
         component: () => import('@/views/NotAuthorizedView.vue'),
         meta: { title: 'NotAuthorized' },
       },
-
       {
+        // только один path!
         path: 'clients',
-        name: 'GymClients',
+        name: 'Clients',
         component: () => import('@/views/AllClientsView.vue'),
         meta: {
-          title: 'GymClients',
+          title: 'Клиенты',
           allowedRoles: ['local_admin', 'super_admin'],
         },
       },
 
       {
-        path: 'records',
-        name: 'MyRecords',
-        component: () => import('@/views/MyRecords.vue'),
-        meta: { title: 'Мои записи' },
-      },
-      {
         path: 'archive',
         name: 'Archive',
         component: () => import('@/views/ArchivePage.vue'),
         meta: { title: 'Архив' },
-      },
-      {
-        path: 'clients',
-        name: 'Clients',
-        component: () => import('@/views/AllClientsView.vue'),
-        meta: { title: 'Клиенты' },
       },
       {
         path: 'employee',

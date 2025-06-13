@@ -6,7 +6,6 @@
         {{ record.status }}
       </el-tag>
     </div>
-
     <div class="record-details">
       <div class="detail-row">
         <span class="label">Сотрудник:</span>
@@ -21,7 +20,6 @@
         <span class="value">{{ formatDate(record.time) }}</span>
       </div>
     </div>
-
     <div class="record-footer">
       <el-button
         v-if="canCancel"
@@ -32,7 +30,6 @@
       >
         Отменить
       </el-button>
-
       <el-button
         v-else
         class="rebook-button"

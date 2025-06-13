@@ -1,98 +1,81 @@
-// src/store/useDistrictStore.ts
 import { defineStore } from 'pinia';
-import api from '@/services/api'; // предполагается, что api настроен для отправки запросов на ваш сервер
-import { ElNotification } from 'element-plus';
-import { useUiStore } from './useUiStore'; // предполагается, что у вас есть useUiStore для отображения загрузки
+import { ref } from 'vue';
+import { notifyError, notifySuccess } from '@/utils/notify';
+import type {
+  District,
+  CreateDistrictPayload,
+  UpdateDistrictPayload,
+} from '@/types';
+import api from '@/services/api';
 
-// Типизация для District
-export interface District {
-  id: number;
-  name: string;
-  address: string;
-  phone: string;
-  email: string;
-}
+export const useDistrictStore = defineStore('district', () => {
+  const districts = ref<District[]>([]);
+  const isLoading = ref(false);
 
-export const useDistrictStore = defineStore('district', {
-  state: () => ({
-    districts: [] as District[], // список всех отделов
-    district: null as District | null, // один выбранный отдел
-  }),
-  actions: {
-    // Создание нового отдела
-    async createDistrict(district: Partial<District>) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.post('/districts', district); // вызов API для создания отдела
-        ElNotification.success('Отдел успешно добавлен');
-        this.districts.push(response.data.district); // добавляем созданный отдел в список
-      } catch (error) {
-        ElNotification.error('Ошибка при создании отдела');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+  async function fetchDistricts() {
+    isLoading.value = true;
+    try {
+      const { data } = await api.get<District[] | { districts: District[] }>(
+        '/districts'
+      );
+      console.log('Districts API response:', data);
+      districts.value = Array.isArray(data) ? data : data.districts || [];
+      console.log('Assigned districts:', districts.value);
+    } catch (e: any) {
+      console.error('Fetch districts error:', e);
+      notifyError(e.response?.data?.message || 'Ошибка загрузки районов');
+      districts.value = [];
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-    // Получение всех отделов
-    async getAllDistricts() {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.get('/districts'); // вызов API для получения всех отделов
-        this.districts = response.data;
-      } catch (error) {
-        ElNotification.error('Ошибка при получении отделов');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+  async function createDistrict(payload: CreateDistrictPayload) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.post<District>('/districts', payload);
+      districts.value.push(data);
+      notifySuccess('Район добавлен');
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка при создании района');
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-    // Получение отдела по ID
-    async getDistrictById(id: number) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.get(`/districts/${id}`); // вызов API для получения одного отдела
-        this.district = response.data;
-      } catch (error) {
-        ElNotification.error('Ошибка при получении отдела');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+  async function updateDistrict(id: number, payload: UpdateDistrictPayload) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.put<District>(`/districts/${id}`, payload);
+      const idx = districts.value.findIndex((d) => d.id === id);
+      if (idx !== -1) districts.value[idx] = data;
+      notifySuccess('Район обновлён');
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка при обновлении района');
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-    // Обновление информации об отделе
-    async updateDistrict(district: District) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.put(`/districts/${district.id}`, district); // вызов API для обновления отдела
-        ElNotification.success('Отдел успешно обновлён');
-        const index = this.districts.findIndex((d) => d.id === district.id);
-        if (index !== -1) {
-          this.districts[index] = response.data.updatedDistrict; // обновляем информацию об отделе в списке
-        }
-      } catch (error) {
-        ElNotification.error('Ошибка при обновлении отдела');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+  async function removeDistrict(id: number) {
+    isLoading.value = true;
+    try {
+      await api.delete(`/districts/${id}`);
+      districts.value = districts.value.filter((d) => d.id !== id);
+      notifySuccess('Район удалён');
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка при удалении района');
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-    // Удаление отдела
-    async deleteDistrict(id: number) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        await api.delete(`/districts/${id}`); // вызов API для удаления отдела
-        ElNotification.success('Отдел успешно удалён');
-        this.districts = this.districts.filter((d) => d.id !== id); // удаляем из списка
-      } catch (error) {
-        ElNotification.error('Ошибка при удалении отдела');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
-  },
+  return {
+    districts,
+    isLoading,
+    fetchDistricts,
+    createDistrict,
+    updateDistrict,
+    removeDistrict,
+  };
 });

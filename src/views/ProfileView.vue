@@ -1,33 +1,31 @@
 <template>
   <div class="page">
     <div class="profile-container" v-if="user">
-      <el-card class="profile-card">
-        <h2>Личная информация</h2>
-        <el-row :gutter="20">
-          <el-col :span="8"><strong>Имя:</strong></el-col>
-          <el-col :span="16">{{ user.name }}</el-col>
+      <h2>Личная информация</h2>
+      <el-row :gutter="20">
+        <el-col :span="8"><strong>Имя:</strong></el-col>
+        <el-col :span="16">{{ user.name }}</el-col>
 
-          <el-col :span="8"><strong>Email:</strong></el-col>
-          <el-col :span="16">{{ user.email }}</el-col>
+        <el-col :span="8"><strong>Email:</strong></el-col>
+        <el-col :span="16">{{ user.email }}</el-col>
 
-          <el-col :span="8"><strong>Телефон:</strong></el-col>
-          <el-col :span="16">{{ user.phone }}</el-col>
+        <el-col :span="8"><strong>Телефон:</strong></el-col>
+        <el-col :span="16">{{ user.phone }}</el-col>
 
-          <el-col :span="8"><strong>Роль:</strong></el-col>
-          <el-col :span="16">{{ user.role }}</el-col>
-        </el-row>
+        <el-col :span="8"><strong>Роль:</strong></el-col>
+        <el-col :span="16">{{ user.role }}</el-col>
+      </el-row>
 
-        <el-button
-          type="primary"
-          @click="openProfileEditModal"
-          class="edit-button"
-        >
-          Редактировать профиль
-        </el-button>
-        <el-button type="danger" @click="logout" class="logout-button">
-          Выйти
-        </el-button>
-      </el-card>
+      <el-button
+        type="primary"
+        @click="openProfileEditModal"
+        class="edit-button"
+      >
+        Редактировать профиль
+      </el-button>
+      <el-button type="danger" @click="logout" class="logout-button">
+        Выйти
+      </el-button>
 
       <el-dialog
         v-model="profileEditDialogVisible"

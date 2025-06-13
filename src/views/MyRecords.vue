@@ -1,103 +1,86 @@
 <template>
   <div class="page">
-    <div class="title">
-      Добро пожаловать, <span>{{ userName }}</span
-      >!
+    <div v-if="sessionStore.isLoading" class="loading">Загрузка...</div>
+    <div v-else>
+      <div class="title">
+        Добро пожаловать, <span>{{ userName }}</span
+        >!
+      </div>
+      <div v-if="records.length">
+        <div class="subtitle">Вот Ваши ближайшие записи:</div>
+        <RecordCard v-for="rec in records" :key="rec.id" :record="rec" />
+      </div>
+      <div class="subtitle" v-else>У вас нет текущих записей.</div>
     </div>
-    <div v-if="currentRecords.length">
-      <div class="subtitle">Вот Ваши ближайшие записи:</div>
-      <record-card v-for="rec in currentRecords" :key="rec.id" :record="rec" />
-    </div>
-    <div class="subtitle" v-else>У вас нет текущих записей.</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useSessionStore } from "@/store/useSessionStore"; // Импортируем store для сессий
+import { useSessionStore } from "@/store/useSessionStore";
 import RecordCard from "@/components/Cards/RecordCard.vue";
 
-// Типизация записи
-interface Record {
-  id: number;
-  title: string;
-  with: string;
-  address: string;
-  time: string;
-  status: string;
-  service: string;
-}
+const userName = ref("Пользователь");
 
-// Данные пользователя и сессий
-const userName = ref<string>("");
-
-const records = ref<Record[]>([
-  {
-    id: 1,
-    title: "Запись на йогу",
-    with: "Ирина",
-    address: "ул. Ленина, 10",
-    time: "2025-05-01T08:00:00",
-    status: "подтверждена",
-    service: "Утренняя йога",
-  },
-  {
-    id: 2,
-    title: "Консультация тренера",
-    with: "Алексей",
-    address: "пр. Мира, 5",
-    time: "2025-05-02T14:30:00",
-    status: "скоро",
-    service: "План тренировок",
-  },
-  {
-    id: 3,
-    title: "Тренировка по пилатесу",
-    with: "Ольга",
-    address: "ул. Первомайская, 7",
-    time: "2025-05-03T18:00:00",
-    status: "отменена",
-    service: "Пилатес для начинающих",
-  },
-]);
-
-const stored = localStorage.getItem("userData");
-if (stored) {
-  try {
-    const userData = JSON.parse(stored);
-    userName.value = userData.name || "Пользователь";
-  } catch {
-    userName.value = "Пользователь";
-  }
-} else {
-  userName.value = "Пользователь";
-}
-
-// Создаем вычисляемое свойство для объединения тестовых записей и сессий
 const sessionStore = useSessionStore();
-const currentRecords = computed(() => {
-  const currentSessions = sessionStore.sessions.map((session) => ({
-    id: session.id,
-    title: session.direction_name,
-    with: "Тренер", // Это можно заменить на имя тренера, если есть в данных
-    address: "Не указано", // Можно добавить адрес, если есть
-    time: `${session.specific_date} ${session.start_time}`,
-    status: session.status,
-    service: "Не указано", // Это можно заменить на конкретную услугу
-  }));
 
-  // Возвращаем объединенный список записей и сессий
-  return [...records.value, ...currentSessions].filter((rec) =>
-    ["подтверждена", "скоро", "отменена"].includes(rec.status.toLowerCase())
-  );
+const ACTIVE_STATUSES = ["booked", "completed", "canceled", "in_progress"];
+
+const records = computed(() => {
+  const arr = Array.isArray(sessionStore.sessions) ? sessionStore.sessions : [];
+  console.log("Sessions in records:", arr);
+  return arr
+    .filter((s) => {
+      const included = ACTIVE_STATUSES.includes(s.status);
+      console.log(`Session ${s.id} status: ${s.status}, included: ${included}`);
+      return included;
+    })
+    .map((s) => {
+      let time = "";
+      if (s.specific_date && s.start_time) {
+        const datePart = s.specific_date.split("T")[0];
+        time = `${datePart}T${s.start_time}`;
+      } else {
+        time = s.specific_date || "";
+      }
+      return {
+        id: s.id,
+        title: s.direction_name || "Без направления",
+        with: "Сотрудник",
+        address: "Не указано",
+        time,
+        status: mapStatusRu(s.status),
+      };
+    });
 });
 
-// Загружаем сессии при монтировании компонента
-onMounted(() => {
-  sessionStore.getUserSessions(); // Получаем сессии текущего пользователя
+function mapStatusRu(status: string) {
+  switch (status) {
+    case "booked":
+      return "скоро";
+    case "completed":
+      return "подтверждена";
+    case "canceled":
+      return "отменена";
+    case "in_progress":
+      return "в процессе";
+    default:
+      return status;
+  }
+}
+
+onMounted(async () => {
+  await sessionStore.fetchSessions();
+  console.log("Sessions after fetch:", sessionStore.sessions);
+  console.log("Records:", records.value);
+  const stored = localStorage.getItem("userData");
+  if (stored) {
+    try {
+      const userData = JSON.parse(stored);
+      userName.value = userData.name || "Пользователь";
+    } catch {
+      userName.value = "Пользователь";
+    }
+  }
 });
 </script>
-
-<style scoped>
-/* Стили для страницы */
-</style>

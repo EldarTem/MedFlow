@@ -1,15 +1,14 @@
-<!-- src/layouts/MainLayout.vue -->
 <template>
   <el-container>
     <el-header
       height="60px"
-      style="border-bottom: 1px solid var(--el-menu-border-color);
-}"
+      style="border-bottom: 1px solid var(--el-menu-border-color)"
     >
       <Header />
     </el-header>
     <el-main>
-      <router-view />
+      <!-- ВАЖНО! -->
+      <router-view :key="$route.fullPath" />
     </el-main>
     <el-footer height="60px" class="footer" style="display: none">
       <Footer />

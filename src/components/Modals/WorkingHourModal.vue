@@ -93,7 +93,7 @@ export default {
       } else if (typeof time === "string" && time.includes("T")) {
         date = new Date(time);
       } else {
-        return time; // уже в формате HH:mm
+        return time; 
       }
 
       return `${String(date.getHours()).padStart(2, "0")}:${String(
@@ -102,7 +102,7 @@ export default {
     },
 
     handleClose() {
-      this.$emit("update:model-value", false); // Обновление состояния видимости
+      this.$emit("update:model-value", false); 
     },
   },
 };

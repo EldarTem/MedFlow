@@ -3,14 +3,12 @@
     <router-link to="/records" class="header__logo">
       <img src="@/assets/Logo_myTurn.png" alt="Логотип" />
     </router-link>
-
     <div class="header__right">
       <button class="header__burger" @click="open = !open" aria-label="Menu">
         <span :class="{ 'is-open': open }"></span>
         <span :class="{ 'is-open': open }"></span>
         <span :class="{ 'is-open': open }"></span>
       </button>
-
       <nav :class="['header__nav', { 'is-open': open }]" ref="nav">
         <ul class="nav__list" ref="list">
           <li
@@ -29,13 +27,11 @@
         </ul>
         <div class="slider" ref="slider"></div>
       </nav>
-
       <button class="header__book-btn" @click="openBookingModal">
         Записаться
       </button>
     </div>
   </div>
-
   <WizardDialog
     :visible="showModal"
     @update:visible="showModal = $event"
@@ -46,11 +42,17 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted, nextTick } from "vue";
-
+import {
+  defineComponent,
+  ref,
+  computed,
+  onMounted,
+  nextTick,
+  watch,
+} from "vue";
+import { useRoute } from "vue-router";
 import { useAuthStore } from "@/store/useAuthStore";
 import WizardDialog from "@/components/Wizard/WizardDialog.vue";
-
 import Step1Form from "@/components/Wizard/Step1Form.vue";
 import Step2Form from "@/components/Wizard/Step2Form.vue";
 import Step3Form from "@/components/Wizard/Step3Form.vue";
@@ -73,8 +75,12 @@ export default defineComponent({
 
     const auth = useAuthStore();
     const user = computed(() => auth.user);
+    const isProfileLoading = computed(() => auth.isProfileLoading);
+
+    const route = useRoute();
 
     const menu = computed(() => {
+      if (isProfileLoading.value) return [];
       if (!user.value) {
         return [
           { path: "/login", label: "Войти" },
@@ -113,15 +119,14 @@ export default defineComponent({
       }
       return [];
     });
-    const wizardData = ref({
-      departmentId: null,
-      categoryId: null,
-      serviceId: null,
-      employeeId: null,
-      date: null,
-      time: null,
-    });
 
+    const wizardData = ref({
+      districtId: null as number | null,
+      directionId: null as number | null,
+      employeeId: null as number | null,
+      date: null as string | null,
+      time: null as string | null,
+    });
     const updateSlider = () => {
       nextTick(() => {
         const activeLi = list.value?.querySelector(
@@ -141,9 +146,16 @@ export default defineComponent({
       setTimeout(updateSlider, 50);
     };
 
+    // Watch на изменение маршрута — будет двигать слайдер
+    watch(
+      () => route.fullPath,
+      () => {
+        updateSlider();
+      }
+    );
+
     onMounted(() => {
       updateSlider();
-
       if (document.fonts?.ready) {
         document.fonts.ready.then(() => {
           requestAnimationFrame(updateSlider);
@@ -171,6 +183,7 @@ export default defineComponent({
     return {
       open,
       user,
+      isProfileLoading,
       menu,
       list,
       slider,

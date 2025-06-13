@@ -19,7 +19,7 @@
       width="600px"
       :before-close="() => (wizardVisible = false)"
     >
-      <template #title>
+      <template #header>
         <div class="wizard-header">
           <div class="wizard-title">Шаг {{ currentStep }} из 4</div>
           <div class="wizard-subtitle">

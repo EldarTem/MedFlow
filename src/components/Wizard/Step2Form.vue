@@ -1,67 +1,129 @@
 <template>
   <div class="step">
-    <ul class="options-list">
-      <!-- Отображаем все направления из store -->
+    <el-form label-position="top">
+      <el-form-item label="Категория">
+        <el-select
+          v-model="form.categoryId"
+          placeholder="Выберите категорию"
+          :loading="categoryStore.isLoading"
+          @change="handleCategoryChange"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="cat in categoryStore.categories"
+            :key="cat.id"
+            :label="cat.name"
+            :value="cat.id"
+          />
+        </el-select>
+      </el-form-item>
+    </el-form>
+
+    <ul v-if="form.categoryId" class="options-list">
       <li
         v-for="dir in directionStore.directions"
         :key="dir.id"
-        :class="['option-item', { selected: form.departmentId === dir.id }]"
+        :class="['option-item', { selected: form.directionId === dir.id }]"
         @click="selectDirection(dir.id)"
       >
         <i class="el-icon-location"></i>
         {{ dir.name }}
       </li>
-      <!-- Если нет направлений, показываем сообщение -->
-      <li v-if="directionStore.directions.length === 0">
-        Загрузка направлений...
+      <li v-if="directionStore.isLoading">Загрузка направлений...</li>
+      <li
+        v-else-if="
+          !directionStore.directions || directionStore.directions.length === 0
+        "
+      >
+        Направления не найдены
       </li>
     </ul>
+    <div v-else-if="!props.modelValue.districtId">
+      Выберите отдел на предыдущем шаге
+    </div>
+    <div v-else>Выберите категорию выше</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits, onMounted } from "vue";
-import { useDirectionStore } from "@/store/useDirectionStore"; // Импорт store для направлений
+import { useCategoryStore } from "@/store/useCategoryStore";
+import { useDirectionStore } from "@/store/useDirectionStore";
 
-// Типизация объекта данных
 interface WizardForm {
-  departmentId?: number;
-  categoryId?: number;
-  serviceId?: number;
-  employeeId?: number;
-  date?: string;
-  time?: string;
+  districtId?: number | null;
+  categoryId: number | null;
+  directionId: number | null;
+  employeeId?: number | null;
+  date?: string | null;
+  time?: string | null;
+  workingHourId?: number | null;
 }
 
-// Пропсы и события
 const props = defineProps<{ modelValue: WizardForm }>();
 const emit = defineEmits<{
   (e: "update:modelValue", value: WizardForm): void;
 }>();
 
-// Используем store для получения направлений
+const categoryStore = useCategoryStore();
 const directionStore = useDirectionStore();
 
-// Инициализация формы
-const form = ref<WizardForm>({ ...props.modelValue });
+const form = ref<WizardForm>({ categoryId: null, directionId: null });
 
-// Слежение за изменениями в modelValue (получаемые пропсы)
 watch(
-  () => props.modelValue.categoryId,
-  (v) => {
-    form.value.categoryId = v;
+  () => props.modelValue,
+  (newValue) => {
+    form.value = { ...newValue };
+    // Очищаем categoryId и directionId, если districtId изменился
+    if (newValue.districtId !== form.value.districtId) {
+      form.value.categoryId = null;
+      form.value.directionId = null;
+      directionStore.directions = [];
+      emit("update:modelValue", { ...form.value });
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+onMounted(() => {
+  console.log("Step2Form mounted, districtId:", props.modelValue.districtId);
+  if (props.modelValue.districtId) {
+    categoryStore.fetchCategories(props.modelValue.districtId);
+  }
+});
+
+watch(
+  () => props.modelValue.districtId,
+  (newDistrictId) => {
+    if (newDistrictId) {
+      categoryStore.fetchCategories(newDistrictId);
+    } else {
+      categoryStore.categories = [];
+      directionStore.directions = [];
+      form.value.categoryId = null;
+      form.value.directionId = null;
+      emit("update:modelValue", { ...form.value });
+    }
   }
 );
 
-// Запрашиваем все направления при монтировании компонента
-onMounted(() => {
-  directionStore.getAllDirections(); // Получаем все направления через store
-});
+function handleCategoryChange(categoryId: number) {
+  form.value.categoryId = categoryId;
+  form.value.directionId = null; // Очищаем направление
+  directionStore.directions = []; // Очищаем направления
+  emit("update:modelValue", { ...form.value });
+  // Проверяем, что districtId не null/undefined
+  if (props.modelValue.districtId) {
+    directionStore.fetchDirections({
+      districtId: props.modelValue.districtId,
+      categoryId,
+    });
+  }
+}
 
-// Функция для выбора направления
 function selectDirection(id: number) {
-  form.value.departmentId = id;
-  emit("update:modelValue", { ...form.value }); // Обновляем модель на каждом шаге
+  form.value.directionId = id;
+  emit("update:modelValue", { ...form.value });
 }
 </script>
 

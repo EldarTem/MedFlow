@@ -1,66 +1,64 @@
 <template>
   <div class="step">
     <ul class="options-list">
-      <!-- Проверка, что данные есть и они корректно отображаются -->
       <li
         v-for="dept in districtStore.districts"
         :key="dept.id"
-        :class="['option-item', { selected: form.departmentId === dept.id }]"
+        :class="['option-item', { selected: form.districtId === dept.id }]"
         @click="select(dept.id)"
       >
         <i class="el-icon-location"></i>
         {{ dept.name }}
       </li>
-      <!-- Если данных нет, показываем сообщение -->
-      <li v-if="districtStore.districts.length === 0">Загрузка отделов...</li>
+      <li v-if="districtStore.isLoading">Загрузка отделов...</li>
+      <li
+        v-else-if="
+          !districtStore.districts || districtStore.districts.length === 0
+        "
+      >
+        Отделы не найдены
+      </li>
     </ul>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits, onMounted } from "vue";
-import { useDistrictStore } from "@/store/useDistrictStore"; // Импорт store для отделов
+import { useDistrictStore } from "@/store/useDistrictStore";
 
-// Типизация объекта данных
 interface WizardForm {
-  departmentId: number | null; // Сделаем обязательным свойство departmentId с типом number | null
-  categoryId?: number;
-  serviceId?: number;
-  employeeId?: number;
-  date?: string;
-  time?: string;
+  districtId: number | null;
+  directionId?: number | null;
+  employeeId?: number | null;
+  date?: string | null;
+  time?: string | null;
+  workingHourId?: number | null;
 }
 
-// Пропсы, которые передаются в компонент
 const props = defineProps<{ modelValue: WizardForm }>();
 const emit = defineEmits<{
   (e: "update:modelValue", value: WizardForm): void;
 }>();
 
-// Используем store для получения всех отделов
 const districtStore = useDistrictStore();
 
-// Инициализация формы
-const form = ref<WizardForm>({ departmentId: null });
+const form = ref<WizardForm>({ districtId: null });
 
-// Слежение за изменениями в modelValue (получаемые пропсы)
 watch(
   () => props.modelValue,
   (newValue) => {
     form.value = { ...newValue };
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 );
 
-// Запрашиваем все отделы при монтировании компонента
 onMounted(() => {
-  districtStore.getAllDistricts(); // Получаем все отделы через store
+  districtStore.fetchDistricts();
 });
 
-// Функция для выбора отдела
 function select(id: number) {
-  form.value.departmentId = id;
-  emit("update:modelValue", { ...form.value }); // Обновляем модель на каждом шаге
+  form.value.districtId = id;
+  emit("update:modelValue", { ...form.value });
 }
 </script>
 

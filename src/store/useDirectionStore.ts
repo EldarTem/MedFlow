@@ -1,96 +1,95 @@
 import { defineStore } from 'pinia';
-import api from '@/services/api'; // Предполагается, что api настроен
-import { ElNotification } from 'element-plus';
-import { useUiStore } from './useUiStore'; // Для отображения состояния загрузки
+import { ref } from 'vue';
+import { notifyError, notifySuccess } from '@/utils/notify';
+import type {
+  Direction,
+  CreateDirectionPayload,
+  UpdateDirectionPayload,
+} from '@/types';
+import api from '@/services/api';
 
-export interface Direction {
-  id: number;
-  name: string;
-  description: string;
-  requirements: string;
-  category_id: number;
-}
+export const useDirectionStore = defineStore('direction', () => {
+  const directions = ref<Direction[]>([]);
+  const isLoading = ref(false);
 
-export const useDirectionStore = defineStore('directions', {
-  state: () => ({
-    directions: [] as Direction[], // список направлений
-    direction: null as Direction | null, // одно выбранное направление
-  }),
-  actions: {
-    // Получение всех направлений
-    async getAllDirections() {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.get('/dir'); // Вызов API для получения всех направлений
-        this.directions = response.data;
-      } catch (error) {
-        ElNotification.error('Ошибка при получении направлений');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
-
-    // Получение направления по ID
-    async getDirectionById(id: number) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.get(`/dir/${id}`); // Вызов API для получения направления по ID
-        this.direction = response.data;
-      } catch (error) {
-        ElNotification.error('Ошибка при получении направления');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
-
-    // Создание нового направления
-    async createDirection(direction: Partial<Direction>) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.post('/dir', direction); // Вызов API для создания направления
-        ElNotification.success('Направление успешно создано');
-        this.directions.push(response.data.direction); // Добавляем новое направление в список
-      } catch (error) {
-        ElNotification.error('Ошибка при создании направления');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
-
-    // Обновление направления
-    async updateDirection(direction: Direction) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.put(`/dir/${direction.id}`, direction); // Вызов API для обновления направления
-        ElNotification.success('Направление успешно обновлено');
-        const index = this.directions.findIndex((d) => d.id === direction.id);
-        if (index !== -1) {
-          this.directions[index] = response.data.updatedDirection; // Обновляем направление в списке
+  async function fetchDirections(params?: {
+    districtId?: number;
+    categoryId?: number;
+  }) {
+    if (isLoading.value || (directions.value.length > 0 && !params?.categoryId))
+      return;
+    isLoading.value = true;
+    try {
+      const { data } = await api.get<Direction[] | { directions: Direction[] }>(
+        '/dir',
+        {
+          params,
         }
-      } catch (error) {
-        ElNotification.error('Ошибка при обновлении направления');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+      );
+      console.log('Directions API response:', data);
+      directions.value = Array.isArray(data) ? data : data.directions || [];
+      console.log('Assigned directions:', directions.value);
+    } catch (e: any) {
+      console.error('Fetch directions error:', e);
+      notifyError(e.response?.data?.message || 'Ошибка загрузки направлений');
+      directions.value = [];
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-    // Удаление направления
-    async deleteDirection(id: number) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        await api.delete(`/dir/${id}`); // Вызов API для удаления направления
-        ElNotification.success('Направление успешно удалено');
-        this.directions = this.directions.filter((d) => d.id !== id); // Удаляем направление из списка
-      } catch (error) {
-        ElNotification.error('Ошибка при удалении направления');
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
-  },
+  async function createDirection(payload: CreateDirectionPayload) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.post<Direction>('/dir', payload);
+      directions.value.push(data);
+      notifySuccess('Направление добавлено');
+    } catch (e: any) {
+      notifyError(
+        e.response?.data?.message || 'Ошибка при создании направления'
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function updateDirection(id: number, payload: UpdateDirectionPayload) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.put<Direction>(`/dir/${id}`, payload);
+      const idx = directions.value.findIndex((d) => d.id === id);
+      if (idx !== -1) directions.value[idx] = data;
+      notifySuccess('Направление обновлено');
+    } catch (e: any) {
+      notifyError(
+        e.response?.data?.message || 'Ошибка при обновлении направления'
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function removeDirection(id: number) {
+    isLoading.value = true;
+    try {
+      await api.delete(`/dir/${id}`);
+      directions.value = directions.value.filter((d) => d.id !== id);
+      notifySuccess('Направление удалено');
+    } catch (e: any) {
+      notifyError(
+        e.response?.data?.message || 'Ошибка при удалении направления'
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  return {
+    directions,
+    isLoading,
+    fetchDirections,
+    createDirection,
+    updateDirection,
+    removeDirection,
+  };
 });

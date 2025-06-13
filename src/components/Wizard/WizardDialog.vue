@@ -5,7 +5,7 @@
     width="600px"
     :before-close="closeDialog"
   >
-    <template #title>
+    <template #header>
       <div class="wizard-header">
         <div class="wizard-title">
           Шаг {{ currentStep }} из {{ stepsCount }}
@@ -21,7 +21,6 @@
       ></div>
     </div>
 
-    <!-- Отображаем компонент текущего шага -->
     <component
       :is="stepComponents[currentStep - 1]"
       :modelValue="wizardData"
@@ -29,10 +28,8 @@
     />
 
     <template #footer>
-      <!-- Кнопка Назад -->
       <el-button v-if="currentStep > 1" @click="prevStep">Назад</el-button>
 
-      <!-- Кнопка Далее -->
       <el-button
         v-if="currentStep < stepsCount"
         type="primary"
@@ -41,7 +38,6 @@
         Далее
       </el-button>
 
-      <!-- Кнопка Завершить -->
       <el-button v-else type="primary" @click="submit">
         {{ finishText }}
       </el-button>
@@ -53,7 +49,6 @@
 import { ref, computed, defineProps, defineEmits } from "vue";
 import type { Component } from "vue";
 
-// Пропсы
 const props = defineProps<{
   visible: boolean;
   subtitles: string[];
@@ -75,7 +70,6 @@ const currentStep = ref(1);
 const completedSteps = ref(0);
 const stepsCount = props.subtitles.length;
 
-// Модель данных
 const wizardData = ref({
   departmentId: null,
   categoryId: null,
@@ -89,7 +83,6 @@ const updateWizardData = (data: any) => {
   wizardData.value = { ...data };
 };
 
-// Переключение шагов
 function nextStep() {
   if (currentStep.value < stepsCount) {
     currentStep.value++;
@@ -104,14 +97,13 @@ function prevStep() {
   }
 }
 
-// Отправка данных
 function submit() {
   emit("submit");
-  emit("update:visible", false); // Закрытие модалки
+  emit("update:visible", false);
 }
 
 function closeDialog() {
-  emit("update:visible", false); // Закрытие модалки при крестике
+  emit("update:visible", false);
 }
 
 const finishText = props.finishText || "Готово";

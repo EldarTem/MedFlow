@@ -1,85 +1,147 @@
 import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import { notifyError, notifySuccess } from '@/utils/notify';
+import type { User, UpdateUserPayload } from '@/types';
 import api from '@/services/api';
-import { ElNotification } from 'element-plus';
-import { useUiStore } from './useUiStore';
 
-export const useAdminStore = defineStore('admin', {
-  state: () => ({
-    users: [] as any[],
-    meta: { total: 0, page: 1, limit: 10 },
-    selectedUser: null as any,
-  }),
-  actions: {
-    // Получение всех пользователей (администратор)
-    async fetchAllUsers(page = 1, limit = 10) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const params = { page, limit };
-        const response = await api.get('/admin/district/${id}/employess', {
-          params,
-        });
-        this.users = response.data.users;
-        this.meta = response.data.meta;
-      } catch (error: any) {
-        ElNotification.error(
-          error?.response?.data?.message || 'Не удалось загрузить пользователей'
-        );
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+// Расширим тип User для поддержки дополнительных полей из EmployeeDetails
+export interface EmployeeDetails {
+  user_id: number;
+  name: string;
+  email: string;
+  specialization?: string;
+  experience_years?: number;
+  bio?: string;
+  certifications?: string;
+  message?: string; // Для случаев, когда данных нет
+}
 
-    // Получение пользователя по ID (администратор)
-    async fetchUserById(id: number) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        const response = await api.get(`/admin/${id}`);
-        this.selectedUser = response.data;
-        return this.selectedUser;
-      } catch (error: any) {
-        ElNotification.error(
-          error?.response?.data?.message || 'Не удалось загрузить пользователя'
-        );
-        throw error;
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+// Тип для payload назначения роли
+export interface AssignRolePayload {
+  email: string;
+  role: 'user' | 'employee' | 'local_admin' | 'super_admin';
+  district_id?: number;
+  specialization?: string;
+  experience_years?: number;
+  bio?: string;
+  certifications?: string;
+}
 
-    // Обновить пользователя по ID
-    async updateUserById(id: number, payload: Partial<any>) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        await api.put(`/admin/${id}`, payload);
-        ElNotification.success('Пользователь обновлён');
-        await this.fetchAllUsers(this.meta.page, this.meta.limit);
-      } catch (error: any) {
-        ElNotification.error(
-          error?.response?.data?.message || 'Не удалось обновить пользователя'
-        );
-      } finally {
-        uiStore.hideLoader();
-      }
-    },
+export const useAdminStore = defineStore('admin', () => {
+  const users = ref<User[]>([]);
+  const isLoading = ref(false);
 
-    // Удалить пользователя по ID
-    async deleteUserById(id: number) {
-      const uiStore = useUiStore();
-      uiStore.showLoader();
-      try {
-        await api.delete(`/admin/${id}`);
-        ElNotification.success('Пользователь удалён');
-        this.users = this.users.filter((user) => user.id !== id);
-      } catch (error: any) {
-        ElNotification.error(
-          error?.response?.data?.message || 'Не удалось удалить пользователя'
-        );
-      } finally {
-        uiStore.hideLoader();
+  async function fetchUsers(params?: {
+    role?: User['role'];
+    page?: number;
+    limit?: number;
+  }) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.get<{
+        users: User[];
+        meta: { total: number; page: number; limit: number };
+      }>('/admin', {
+        params,
+      });
+      users.value = data.users;
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка загрузки пользователей');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function getUserById(id: number) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.get<User>(`/admin/${id}`);
+      return data;
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка получения пользователя');
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function removeUser(id: number) {
+    isLoading.value = true;
+    try {
+      await api.delete(`/admin/${id}`);
+      users.value = users.value.filter((u) => u.id !== id);
+      notifySuccess('Пользователь удалён');
+    } catch (e: any) {
+      notifyError(
+        e.response?.data?.message || 'Ошибка при удалении пользователя'
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function updateUser(id: number, payload: UpdateUserPayload) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.put<{ message: string; updated: User }>(
+        `/admin/${id}`,
+        payload
+      );
+      const idx = users.value.findIndex((u) => u.id === id);
+      if (idx !== -1)
+        users.value[idx] = { ...users.value[idx], ...data.updated };
+      notifySuccess('Пользователь обновлён');
+    } catch (e: any) {
+      notifyError(
+        e.response?.data?.message || 'Ошибка при обновлении пользователя'
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function assignRole(payload: AssignRolePayload) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.post<{ message: string }>(
+        '/admin/assign-role',
+        payload
+      );
+      notifySuccess(data.message);
+      // Обновляем список пользователей, если он уже загружен
+      if (users.value.length) {
+        await fetchUsers();
       }
-    },
-  },
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка при назначении роли');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function getEmployeesByDistrict(districtId: number) {
+    isLoading.value = true;
+    try {
+      const { data } = await api.get<EmployeeDetails[]>(
+        `/admin/district/${districtId}/employees`
+      );
+      return data;
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка получения сотрудников');
+      return [];
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  return {
+    users,
+    isLoading,
+    fetchUsers,
+    getUserById,
+    removeUser,
+    updateUser,
+    assignRole,
+    getEmployeesByDistrict,
+  };
 });

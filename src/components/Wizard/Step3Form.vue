@@ -1,41 +1,68 @@
 <template>
   <div class="step">
     <el-form label-position="top">
-      <el-form-item label="Пользователь">
+      <el-form-item label="Сотрудник">
         <el-select
-          v-model="form.selectedUserId"
-          placeholder="Выберите пользователя"
+          v-model="form.employeeId"
+          placeholder="Выберите сотрудника"
+          :loading="adminStore.isLoading"
         >
           <el-option
-            v-for="user in users"
-            :key="user.id"
-            :label="user.name"
-            :value="user.id"
+            v-for="employee in employees"
+            :key="employee.user_id"
+            :label="employee.name"
+            :value="employee.user_id"
           />
         </el-select>
       </el-form-item>
     </el-form>
 
-    <ul class="options-list" v-if="users.length">
+    <ul class="options-list" v-if="employees.length">
       <li
-        v-for="user in users"
-        :key="user.id"
-        :class="['option-item', { selected: form.selectedUserId === user.id }]"
-        @click="selectUser(user.id)"
+        v-for="employee in employees"
+        :key="employee.user_id"
+        :class="[
+          'option-item',
+          { selected: form.employeeId === employee.user_id },
+        ]"
+        @click="selectEmployee(employee.user_id)"
       >
         <i class="el-icon-user"></i>
-        {{ user.name }}
+        {{ employee.name }}
+        <span v-if="employee.message" class="no-details">{{
+          employee.message
+        }}</span>
       </li>
     </ul>
+    <div v-else-if="adminStore.isLoading">Загрузка сотрудников...</div>
+    <div v-else-if="!form.districtId">Выберите отдел на предыдущем шаге</div>
+    <div v-else>Сотрудники не найдены</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useAdminStore } from "@/store/useAdminStore";
 
+// Тип WizardForm из предыдущих шагов
 interface WizardForm {
-  selectedUserId?: number;
+  districtId?: number | null;
+  directionId?: number | null;
+  employeeId?: number | null;
+  date?: string | null;
+  time?: string | null;
+}
+
+// Тип EmployeeDetails из useAdminStore
+interface EmployeeDetails {
+  user_id: number;
+  name: string;
+  email: string;
+  specialization?: string;
+  experience_years?: number;
+  bio?: string;
+  certifications?: string;
+  message?: string;
 }
 
 const props = defineProps<{ modelValue: WizardForm }>();
@@ -43,30 +70,44 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: WizardForm): void;
 }>();
 
-const form = ref<WizardForm>({ ...props.modelValue });
+const form = ref<WizardForm>({ employeeId: null });
 const adminStore = useAdminStore();
 
-// Получаем всех пользователей при монтировании компонента
+// Храним сотрудников локально, чтобы не зависеть от adminStore.users
+const employees = ref<EmployeeDetails[]>([]);
+
 onMounted(() => {
-  adminStore.fetchAllUsers();
+  if (props.modelValue.districtId) {
+    loadEmployees(props.modelValue.districtId);
+  }
 });
 
-// Подписка на изменения модели
 watch(
-  () => props.modelValue.selectedUserId,
-  (v) => {
-    form.value.selectedUserId = v;
-  }
+  () => props.modelValue,
+  (newValue) => {
+    form.value = { ...newValue };
+    // Если districtId изменился, загружаем сотрудников
+    if (newValue.districtId !== form.value.districtId) {
+      form.value.employeeId = null; // Сбрасываем выбор сотрудника
+      employees.value = []; // Очищаем список сотрудников
+      emit("update:modelValue", { ...form.value });
+      if (newValue.districtId) {
+        loadEmployees(newValue.districtId);
+      }
+    }
+  },
+  { immediate: true, deep: true }
 );
 
-// Выбор пользователя
-function selectUser(userId: number) {
-  form.value.selectedUserId = userId;
-  emit("update:modelValue", { ...form.value }); // Обновление модели на каждом шаге
+async function loadEmployees(districtId: number) {
+  const data = await adminStore.getEmployeesByDistrict(districtId);
+  employees.value = data;
 }
 
-// Список пользователей из store
-const users = computed(() => adminStore.users);
+function selectEmployee(employeeId: number) {
+  form.value.employeeId = employeeId;
+  emit("update:modelValue", { ...form.value });
+}
 </script>
 
 <style scoped>
@@ -91,5 +132,10 @@ const users = computed(() => adminStore.users);
 .option-item.selected {
   border-color: #409eff;
   background: rgba(64, 158, 255, 0.1);
+}
+.no-details {
+  font-size: 0.9em;
+  color: #909399;
+  margin-left: 8px;
 }
 </style>

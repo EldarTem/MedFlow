@@ -1,17 +1,21 @@
-<!-- src/components/Wizard/Step4Form.vue -->
 <template>
   <div class="step">
-    <div v-for="date in dates" :key="date" class="date-block">
-      <h4 class="date-title">{{ date }}</h4>
+    <div v-if="isLoading">Загрузка доступных слотов...</div>
+    <div v-else-if="availableSlots.length === 0">Нет доступных слотов</div>
+    <div v-else v-for="date in uniqueDates" :key="date" class="date-block">
+      <h4 class="date-title">{{ formatDate(date) }}</h4>
       <div class="times-list">
         <el-button
-          v-for="time in times"
-          :key="time"
-          :class="['time-button', { selected: form.time === time }]"
-          @click="selectTime(time)"
+          v-for="slot in slotsByDate[date]"
+          :key="slot.workingHourId"
+          :class="[
+            'time-button',
+            { selected: form.workingHourId === slot.workingHourId },
+          ]"
+          @click="selectSlot(slot.workingHourId, date, slot.startTime)"
           plain
         >
-          {{ time }}
+          {{ slot.startTime }}
         </el-button>
       </div>
     </div>
@@ -19,15 +23,25 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { ref, watch, onMounted, computed } from "vue";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import axios from "axios";
 
 interface WizardForm {
-  departmentId?: number;
-  categoryId?: number;
-  serviceId?: number;
-  employeeId?: number;
-  date?: string;
-  time?: string;
+  districtId?: number | null;
+  directionId?: number | null;
+  employeeId?: number | null;
+  date?: string | null;
+  time?: string | null;
+  workingHourId?: number | null;
+}
+
+interface WorkingHourSlot {
+  workingHourId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
 }
 
 const props = defineProps<{ modelValue: WizardForm }>();
@@ -35,21 +49,71 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: WizardForm): void;
 }>();
 
-const form = reactive<WizardForm>({ ...props.modelValue });
-const dates = ["2025-05-01", "2025-05-02"];
-const times = ["10:00", "14:00", "18:00"];
+const form = ref<WizardForm>({ workingHourId: null, date: null, time: null });
+const availableSlots = ref<WorkingHourSlot[]>([]);
+const isLoading = ref(false);
+
+onMounted(() => {
+  if (props.modelValue.employeeId && props.modelValue.districtId) {
+    fetchAvailableSlots();
+  }
+});
 
 watch(
-  () => props.modelValue.time,
-  (v) => {
-    form.time = v;
+  () => [props.modelValue.employeeId, props.modelValue.districtId],
+  ([newEmployeeId, newDistrictId]) => {
+    if (newEmployeeId && newDistrictId) {
+      fetchAvailableSlots();
+    }
   }
 );
 
-function selectTime(t: string) {
-  form.date = undefined;
-  form.time = t;
-  emit("update:modelValue", { ...form });
+async function fetchAvailableSlots() {
+  isLoading.value = true;
+  try {
+    const { data } = await axios.get<WorkingHourSlot[]>(
+      "/working-hours/available",
+      {
+        params: {
+          employeeId: props.modelValue.employeeId,
+          districtId: props.modelValue.districtId,
+        },
+      }
+    );
+    availableSlots.value = data;
+  } catch (e: any) {
+    console.error("Error fetching available slots:", e);
+    availableSlots.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+const uniqueDates = computed(() => {
+  return [...new Set(availableSlots.value.map((slot) => slot.date))].sort();
+});
+
+const slotsByDate = computed(() => {
+  return availableSlots.value.reduce((acc, slot) => {
+    if (!acc[slot.date]) acc[slot.date] = [];
+    acc[slot.date].push(slot);
+    return acc;
+  }, {} as Record<string, WorkingHourSlot[]>);
+});
+
+function selectSlot(workingHourId: number, date: string, time: string) {
+  form.value.workingHourId = workingHourId;
+  form.value.date = date;
+  form.value.time = time;
+  emit("update:modelValue", { ...form.value });
+}
+
+function formatDate(date: string): string {
+  try {
+    return format(new Date(date), "d MMMM yyyy", { locale: ru });
+  } catch {
+    return date;
+  }
 }
 </script>
 

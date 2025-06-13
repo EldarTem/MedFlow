@@ -4,7 +4,7 @@
     <div class="auth-bg">
       <el-card class="auth-card" shadow="hover">
         <div class="auth-header">
-          <img src="../assets/vue.svg" alt="Logo" class="auth-logo" />
+          <img src="../assets/Logo_myTurn.png" alt="Logo" class="auth-logo" />
           <h2>Вход в систему</h2>
         </div>
         <el-form
@@ -60,6 +60,7 @@
 <script lang="ts">
 import { defineComponent, reactive, ref } from "vue";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useRouter } from "vue-router";
 import { UserFilled, Lock, View, Hide } from "@element-plus/icons-vue";
 
 export default defineComponent({
@@ -72,6 +73,7 @@ export default defineComponent({
   },
   setup() {
     const authStore = useAuthStore();
+    const router = useRouter();
     const loginForm = reactive({
       email: "",
       password: "",
@@ -83,7 +85,16 @@ export default defineComponent({
     };
 
     const handleLogin = async () => {
-      await authStore.login(loginForm.email, loginForm.password);
+      try {
+        await authStore.login({
+          email: loginForm.email,
+          password: loginForm.password,
+        });
+        // После успешного входа редирект на профиль или главную
+        router.push({ name: "Profile" });
+      } catch (e) {
+        // Ошибку показывает notifyError из стора, здесь можно не дублировать
+      }
     };
 
     return {
@@ -91,8 +102,8 @@ export default defineComponent({
       handleLogin,
       passwordVisible,
       togglePassword,
-      View,
       Hide,
+      View,
     };
   },
 });
@@ -129,9 +140,7 @@ export default defineComponent({
 }
 
 .auth-logo {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 10px;
+  width: 180px;
 }
 
 .auth-header h2 {
