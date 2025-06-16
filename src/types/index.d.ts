@@ -39,13 +39,12 @@ export interface CreateCategoryPayload {
   isActive?: boolean;
 }
 export interface CreateSessionPayload {
-  userId: number;
-  workingHourId: number;
-  districtId: number;
-  categoryId?: number; // Добавляем, если требуется
-  directionId?: number; // Добавляем, если требуется
-  status: string;
-  comments: string;
+  user_id: number;
+  working_hour_id: number;
+  district_id: number;
+  direction_id: number;
+  status: 'booked' | 'canceled' | 'completed';
+  comments?: string;
 }
 export interface UpdateCategoryPayload {
   name?: string;
@@ -128,25 +127,14 @@ export interface CreateNotificationPayload {
 
 export interface Session {
   id: number;
-  userId?: number; // Поле необязательное, если не всегда приходит
-  status: 'booked' | 'completed' | 'canceled' | 'in_progress' | string;
-  workingHourId?: number;
-  districtId?: number;
+  user_id: number;
+  district_id: number;
+  direction_id: number;
+  working_hour_id: number;
+  status: 'booked' | 'canceled' | 'completed';
   comments?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  specific_date: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  direction_name: string;
-}
-export interface CreateSessionPayload {
-  userId: number;
-  workingHourId: number;
-  districtId: number;
-  status: string;
-  comments?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface UpdateSessionPayload {
@@ -164,24 +152,42 @@ export interface Statistics {
 
 export interface WorkingHour {
   id: number;
-  employeeId: number;
+  employee_id: number;
+  day_of_week?: string;
+  specific_date?: string;
+  start_time: string;
+  end_time: string;
+  status?: string; // Добавляем поле status (например, 'available' или 'booked')
+}
+export interface WorkingHourSlot {
+  workingHourId: number;
+  date: string;
   startTime: string;
   endTime: string;
-  weekday: number; // 1-7, если нужен день недели
-  isActive: boolean;
 }
 
 export interface CreateWorkingHourPayload {
-  employeeId: number;
-  startTime: string;
-  endTime: string;
-  weekday: number;
-  isActive?: boolean;
+  employee_id?: number;
+  day_of_week?: string;
+  specific_date?: string;
+  start_time: string;
+  end_time: string;
 }
 
 export interface UpdateWorkingHourPayload {
-  startTime?: string;
-  endTime?: string;
-  weekday?: number;
-  isActive?: boolean;
+  day_of_week?: string;
+  specific_date?: string;
+  start_time?: string;
+  end_time?: string;
+}
+
+export interface WizardForm {
+  districtId: number | null;
+  categoryId: number | null;
+  directionId: number | null;
+  employeeId: number | null;
+  date: string | null;
+  time: string | null;
+  workingHourId: number | null;
+  comments?: string;
 }

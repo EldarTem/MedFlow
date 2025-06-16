@@ -2,7 +2,9 @@
   <el-card class="record-card" shadow="hover">
     <div class="record-header">
       <h3 class="record-title">{{ record.title }}</h3>
-      <el-tag :class="['status-tag', record.status.toLowerCase()]">
+      <el-tag
+        :class="['status-tag', record.status.toLowerCase().replace(' ', '-')]"
+      >
         {{ record.status }}
       </el-tag>
     </div>
@@ -18,6 +20,10 @@
       <div class="detail-row">
         <span class="label">Время и дата:</span>
         <span class="value">{{ formatDate(record.time) }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="label">День недели:</span>
+        <span class="value">{{ translateDayOfWeek(record.day_of_week) }}</span>
       </div>
     </div>
     <div class="record-footer">
@@ -45,17 +51,19 @@
 <script setup lang="ts">
 import { defineProps, computed } from "vue";
 import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
-interface Record {
+interface RecordData {
   id: number;
   title: string;
   with: string;
   address: string;
   time: string | Date;
   status: string;
+  day_of_week: string;
 }
 
-const props = defineProps<{ record: Record }>();
+const props = defineProps<{ record: RecordData }>();
 
 const canCancel = computed(() => {
   const st = props.record.status.toLowerCase();
@@ -63,7 +71,22 @@ const canCancel = computed(() => {
 });
 
 function formatDate(date: string | Date): string {
-  return format(new Date(date), "HH:mm d MMMM yyyy", { locale: undefined });
+  if (!date) return "";
+  return format(new Date(date), "HH:mm d MMMM yyyy", { locale: ru });
+}
+
+const dayOfWeekRu: Record<string, string> = {
+  Monday: "Понедельник",
+  Tuesday: "Вторник",
+  Wednesday: "Среда",
+  Thursday: "Четверг",
+  Friday: "Пятница",
+  Saturday: "Суббота",
+  Sunday: "Воскресенье",
+};
+
+function translateDayOfWeek(day: string): string {
+  return dayOfWeekRu[day] || day;
 }
 </script>
 
@@ -96,19 +119,28 @@ function formatDate(date: string | Date): string {
   border-radius: 14px;
   font-weight: 500;
   color: #fff;
+  border: none;
 }
 .status-tag.скоро {
   background-color: #f9aa8b;
 }
+.status-tag.ожидает-подтверждения {
+  background-color: #f9d86b;
+}
+.status-tag.в-процессе {
+  background-color: #6bb7f9;
+}
 .status-tag.подтверждена {
   background-color: #96ba86;
 }
-.status-tag.отменена,
-.status-tag.пропущена {
-  background-color: #919191;
-}
 .status-tag.завершена {
   background-color: #8ba2f9;
+}
+.status-tag.отменена {
+  background-color: #919191;
+}
+.status-tag.пропущена {
+  background-color: #919191;
 }
 
 .record-details {
@@ -133,7 +165,7 @@ function formatDate(date: string | Date): string {
 .record-footer {
   text-align: right;
 }
-.cancel_button {
+.cancel-button {
   border-radius: 6px;
   padding: 6px 20px;
   font-weight: 500;

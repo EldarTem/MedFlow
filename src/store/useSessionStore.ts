@@ -1,3 +1,4 @@
+// src/store/useSessionStore.ts
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { notifyError, notifySuccess } from '@/utils/notify';
@@ -19,7 +20,6 @@ export const useSessionStore = defineStore('session', () => {
         '/sessions'
       );
       console.log('API response:', data);
-      // Проверяем, является ли data массивом или объектом с полем sessions
       sessions.value = Array.isArray(data) ? data : data.sessions || [];
     } catch (e: any) {
       console.error('Fetch sessions error:', e);
@@ -38,6 +38,7 @@ export const useSessionStore = defineStore('session', () => {
       notifySuccess('Запись создана');
     } catch (e: any) {
       notifyError(e.response?.data?.message || 'Ошибка при создании записи');
+      throw e; // Пробрасываем ошибку для обработки в компоненте
     } finally {
       isLoading.value = false;
     }
@@ -57,14 +58,15 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  async function removeSession(id: number) {
+  async function cancelSession(id: number) {
     isLoading.value = true;
     try {
-      await api.delete(`/sessions/${id}`);
-      sessions.value = sessions.value.filter((s) => s.id !== id);
-      notifySuccess('Запись удалена');
+      await api.patch(`/sessions/${id}/cancel`);
+      const idx = sessions.value.findIndex((s) => s.id === id);
+      if (idx !== -1) sessions.value[idx].status = 'canceled';
+      notifySuccess('Запись отменена');
     } catch (e: any) {
-      notifyError(e.response?.data?.message || 'Ошибка при удалении записи');
+      notifyError(e.response?.data?.message || 'Ошибка при отмене записи');
     } finally {
       isLoading.value = false;
     }
@@ -76,6 +78,6 @@ export const useSessionStore = defineStore('session', () => {
     fetchSessions,
     createSession,
     updateSession,
-    removeSession,
+    cancelSession,
   };
 });

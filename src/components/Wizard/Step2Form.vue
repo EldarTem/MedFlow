@@ -7,10 +7,10 @@
           placeholder="Выберите категорию"
           :loading="categoryStore.isLoading"
           @change="handleCategoryChange"
-          style="width: 100%"
+          :disabled="!form.districtId"
         >
           <el-option
-            v-for="cat in categoryStore.categories"
+            v-for="cat in filteredCategories"
             :key="cat.id"
             :label="cat.name"
             :value="cat.id"
@@ -21,7 +21,7 @@
 
     <ul v-if="form.categoryId" class="options-list">
       <li
-        v-for="dir in directionStore.directions"
+        v-for="dir in filteredDirections"
         :key="dir.id"
         :class="['option-item', { selected: form.directionId === dir.id }]"
         @click="selectDirection(dir.id)"
@@ -30,34 +30,22 @@
         {{ dir.name }}
       </li>
       <li v-if="directionStore.isLoading">Загрузка направлений...</li>
-      <li
-        v-else-if="
-          !directionStore.directions || directionStore.directions.length === 0
-        "
-      >
-        Направления не найдены
-      </li>
+      <li v-else-if="!filteredDirections.length">Направления не найдены</li>
     </ul>
-    <div v-else-if="!props.modelValue.districtId">
-      Выберите отдел на предыдущем шаге
-    </div>
+    <div v-else-if="!form.districtId">Выберите отдел на предыдущем шаге</div>
     <div v-else>Выберите категорию выше</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits, onMounted } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import { useCategoryStore } from "@/store/useCategoryStore";
 import { useDirectionStore } from "@/store/useDirectionStore";
 
 interface WizardForm {
-  districtId?: number | null;
+  districtId: number | null;
   categoryId: number | null;
   directionId: number | null;
-  employeeId?: number | null;
-  date?: string | null;
-  time?: string | null;
-  workingHourId?: number | null;
 }
 
 const props = defineProps<{ modelValue: WizardForm }>();
@@ -68,39 +56,55 @@ const emit = defineEmits<{
 const categoryStore = useCategoryStore();
 const directionStore = useDirectionStore();
 
-const form = ref<WizardForm>({ categoryId: null, directionId: null });
+const form = ref<WizardForm>({
+  districtId: null,
+  categoryId: null,
+  directionId: null,
+});
 
+// Синхронизируем с props
 watch(
   () => props.modelValue,
   (newValue) => {
     form.value = { ...newValue };
-    // Очищаем categoryId и directionId, если districtId изменился
-    if (newValue.districtId !== form.value.districtId) {
-      form.value.categoryId = null;
-      form.value.directionId = null;
-      directionStore.directions = [];
-      emit("update:modelValue", { ...form.value });
-    }
   },
   { immediate: true, deep: true }
 );
 
+const filteredCategories = computed(() =>
+  categoryStore.categories.filter(
+    (cat) => cat.districtId === form.value.districtId
+  )
+);
+const filteredDirections = computed(() =>
+  directionStore.directions.filter(
+    (dir) => dir.categoryId === form.value.categoryId
+  )
+);
+
+// Подгружаем справочники при первом запуске (можно делать и глобально)
 onMounted(() => {
-  console.log("Step2Form mounted, districtId:", props.modelValue.districtId);
-  if (props.modelValue.districtId) {
-    categoryStore.fetchCategories(props.modelValue.districtId);
-  }
+  categoryStore.fetchCategories();
+  directionStore.fetchDirections();
 });
 
+// Сброс categoryId и directionId при смене отдела
 watch(
-  () => props.modelValue.districtId,
-  (newDistrictId) => {
-    if (newDistrictId) {
-      categoryStore.fetchCategories(newDistrictId);
-    } else {
-      categoryStore.categories = [];
-      directionStore.directions = [];
+  () => form.value.districtId,
+  (districtId, prev) => {
+    if (districtId !== prev) {
       form.value.categoryId = null;
+      form.value.directionId = null;
+      emit("update:modelValue", { ...form.value });
+    }
+  }
+);
+
+// Сброс directionId при смене категории
+watch(
+  () => form.value.categoryId,
+  (categoryId, prev) => {
+    if (categoryId !== prev) {
       form.value.directionId = null;
       emit("update:modelValue", { ...form.value });
     }
@@ -109,16 +113,8 @@ watch(
 
 function handleCategoryChange(categoryId: number) {
   form.value.categoryId = categoryId;
-  form.value.directionId = null; // Очищаем направление
-  directionStore.directions = []; // Очищаем направления
+  // directionId сбросится автоматически по watch выше
   emit("update:modelValue", { ...form.value });
-  // Проверяем, что districtId не null/undefined
-  if (props.modelValue.districtId) {
-    directionStore.fetchDirections({
-      districtId: props.modelValue.districtId,
-      categoryId,
-    });
-  }
 }
 
 function selectDirection(id: number) {

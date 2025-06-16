@@ -1,3 +1,4 @@
+```vue
 <template>
   <div class="header__inner">
     <router-link to="/records" class="header__logo">
@@ -20,7 +21,7 @@
             <router-link
               :to="item.path"
               class="nav__link"
-              @click.native="moveSlider"
+              @click="moveSlider"
               >{{ item.label }}</router-link
             >
           </li>
@@ -41,15 +42,8 @@
   />
 </template>
 
-<script lang="ts">
-import {
-  defineComponent,
-  ref,
-  computed,
-  onMounted,
-  nextTick,
-  watch,
-} from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/store/useAuthStore";
 import WizardDialog from "@/components/Wizard/WizardDialog.vue";
@@ -58,145 +52,110 @@ import Step2Form from "@/components/Wizard/Step2Form.vue";
 import Step3Form from "@/components/Wizard/Step3Form.vue";
 import Step4Form from "@/components/Wizard/Step4Form.vue";
 
-export default defineComponent({
-  name: "Header",
-  components: {
-    WizardDialog,
-    Step1Form,
-    Step2Form,
-    Step3Form,
-    Step4Form,
-  },
-  setup() {
-    const open = ref(false);
-    const showModal = ref(false);
-    const list = ref<HTMLElement | null>(null);
-    const slider = ref<HTMLElement | null>(null);
+const open = ref(false);
+const showModal = ref(false);
+const list = ref<HTMLElement | null>(null);
+const slider = ref<HTMLElement | null>(null);
 
-    const auth = useAuthStore();
-    const user = computed(() => auth.user);
-    const isProfileLoading = computed(() => auth.isProfileLoading);
+const auth = useAuthStore();
+const user = computed(() => auth.user);
+const isProfileLoading = computed(() => auth.isProfileLoading);
 
-    const route = useRoute();
+const route = useRoute();
 
-    const menu = computed(() => {
-      if (isProfileLoading.value) return [];
-      if (!user.value) {
-        return [
-          { path: "/login", label: "Войти" },
-          { path: "/register", label: "Регистрация" },
-        ];
-      }
-      switch (user.value.role) {
-        case "user":
-          return [
-            { path: "/records", label: "Мои записи" },
-            { path: "/archive", label: "Архив" },
-            { path: "/profile", label: "Аккаунт" },
-          ];
-        case "employee":
-          return [
-            { path: "/employee-schedule", label: "График" },
-            { path: "/records", label: "Записи" },
-            { path: "/archive", label: "Архив" },
-            { path: "/profile", label: "Аккаунт" },
-          ];
-        case "local_admin":
-          return [
-            { path: "/clients", label: "Клиенты" },
-            { path: "/gym-trainers", label: "Сотрудники" },
-            { path: "/archive", label: "Архив" },
-            { path: "/profile", label: "Аккаунт" },
-          ];
-        case "super_admin":
-          return [
-            { path: "/clients", label: "Клиенты" },
-            { path: "/employee", label: "Сотрудники" },
-            { path: "/admins", label: "Администраторы" },
-            { path: "/departments", label: "Отделы" },
-            { path: "/profile", label: "Аккаунт" },
-          ];
-      }
-      return [];
-    });
-
-    const wizardData = ref({
-      districtId: null as number | null,
-      directionId: null as number | null,
-      employeeId: null as number | null,
-      date: null as string | null,
-      time: null as string | null,
-    });
-    const updateSlider = () => {
-      nextTick(() => {
-        const activeLi = list.value?.querySelector(
-          ".nav__item.active"
-        ) as HTMLElement;
-        if (!activeLi || !slider.value) return;
-
-        const offset = activeLi.offsetLeft;
-        const width = activeLi.clientWidth;
-        slider.value.style.transform = `translateX(${offset}px)`;
-        slider.value.style.width = `${width}px`;
-        slider.value.classList.add("visible");
-      });
-    };
-
-    const moveSlider = () => {
-      setTimeout(updateSlider, 50);
-    };
-
-    // Watch на изменение маршрута — будет двигать слайдер
-    watch(
-      () => route.fullPath,
-      () => {
-        updateSlider();
-      }
-    );
-
-    onMounted(() => {
-      updateSlider();
-      if (document.fonts?.ready) {
-        document.fonts.ready.then(() => {
-          requestAnimationFrame(updateSlider);
-        });
-      }
-    });
-
-    const subtitles = [
-      "Выберите отдел",
-      "Выберите категорию и услугу",
-      "Выберите сотрудника",
-      "Выберите дату и время",
+const menu = computed(() => {
+  if (isProfileLoading.value) return [];
+  if (!user.value) {
+    return [
+      { path: "/login", label: "Войти" },
+      { path: "/register", label: "Регистрация" },
     ];
-    const stepComponents = [Step1Form, Step2Form, Step3Form, Step4Form];
-
-    const openBookingModal = () => {
-      showModal.value = true;
-    };
-
-    const handleSubmit = () => {
-      console.log("Мастер завершен!");
-      showModal.value = false;
-    };
-
-    return {
-      open,
-      user,
-      isProfileLoading,
-      menu,
-      list,
-      slider,
-      moveSlider,
-      showModal,
-      subtitles,
-      stepComponents,
-      openBookingModal,
-      handleSubmit,
-      wizardData,
-    };
-  },
+  }
+  switch (user.value.role) {
+    case "user":
+      return [
+        { path: "/records", label: "Мои записи" },
+        { path: "/archive", label: "Архив" },
+        { path: "/profile", label: "Аккаунт" },
+      ];
+    case "employee":
+      return [
+        { path: "/employee-schedule", label: "График" },
+        { path: "/records", label: "Записи" },
+        { path: "/archive", label: "Архив" },
+        { path: "/profile", label: "Аккаунт" },
+      ];
+    case "local_admin":
+      return [
+        { path: "/clients", label: "Клиенты" },
+        { path: "/gym-trainers", label: "Сотрудники" },
+        { path: "/archive", label: "Архив" },
+        { path: "/profile", label: "Аккаунт" },
+      ];
+    case "super_admin":
+      return [
+        { path: "/clients", label: "Клиенты" },
+        { path: "/employee", label: "Сотрудники" },
+        { path: "/admins", label: "Администраторы" },
+        { path: "/departments", label: "Отделы" },
+        { path: "/profile", label: "Аккаунт" },
+      ];
+  }
+  return [];
 });
+
+const updateSlider = () => {
+  nextTick(() => {
+    const activeLi = list.value?.querySelector(
+      ".nav__item.active"
+    ) as HTMLElement;
+    if (!activeLi || !slider.value) return;
+
+    const offset = activeLi.offsetLeft;
+    const width = activeLi.clientWidth;
+    slider.value.style.transform = `translateX(${offset}px)`;
+    slider.value.style.width = `${width}px`;
+    slider.value.classList.add("visible");
+  });
+};
+
+const moveSlider = () => {
+  setTimeout(updateSlider, 50);
+};
+
+// Watch на изменение маршрута
+watch(
+  () => route.fullPath,
+  () => {
+    updateSlider();
+  }
+);
+
+onMounted(() => {
+  updateSlider();
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(() => {
+      requestAnimationFrame(updateSlider);
+    });
+  }
+});
+
+const subtitles = [
+  "Выберите отдел",
+  "Выберите категорию и услугу",
+  "Выберите сотрудника",
+  "Выберите дату и время",
+];
+const stepComponents = [Step1Form, Step2Form, Step3Form, Step4Form];
+
+const openBookingModal = () => {
+  showModal.value = true;
+};
+
+const handleSubmit = (sessionId: number) => {
+  console.log("Header: Form submitted with sessionId:", sessionId);
+  showModal.value = false;
+};
 </script>
 
 <style scoped>
@@ -347,3 +306,4 @@ export default defineComponent({
   background-color: #e14b26;
 }
 </style>
+```

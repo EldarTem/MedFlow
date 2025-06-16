@@ -35,6 +35,43 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateUserProfile(payload: Partial<User>) {
+    isLoading.value = true;
+    try {
+      // На сервере PATCH/PUT /users/profile
+      await api.put('/users/profile', payload, {
+        headers: { Authorization: `Bearer ${token.value}` },
+      });
+      notifySuccess('Профиль обновлен');
+      await getUserProfile(); // Подтянуть новые данные
+      return true;
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка обновления профиля');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function deleteUserProfile() {
+    isLoading.value = true;
+    try {
+      await api.delete('/users/profile', {
+        headers: { Authorization: `Bearer ${token.value}` },
+      });
+      user.value = null;
+      token.value = null;
+      localStorage.removeItem('token');
+      notifySuccess('Профиль удалён');
+      return true;
+    } catch (e: any) {
+      notifyError(e.response?.data?.message || 'Ошибка удаления профиля');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   // Вызывать только один раз при старте приложения!
   async function tryRestore() {
     if (token.value && !user.value) {
@@ -52,7 +89,6 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await api.post<AuthResponse>('/users/login', payload);
       user.value = data.user;
       token.value = data.token;
-
       notifySuccess('Успешный вход');
       return true;
     } catch (e: any) {
@@ -99,6 +135,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     signup,
     getUserProfile,
+    updateUserProfile,
+    deleteUserProfile,
     tryRestore,
     logout,
   };

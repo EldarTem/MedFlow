@@ -1,136 +1,236 @@
 <template>
-  <div class="page">
-    <div class="profile-container" v-if="user">
-      <h2>Личная информация</h2>
-      <el-row :gutter="20">
-        <el-col :span="8"><strong>Имя:</strong></el-col>
-        <el-col :span="16">{{ user.name }}</el-col>
-
-        <el-col :span="8"><strong>Email:</strong></el-col>
-        <el-col :span="16">{{ user.email }}</el-col>
-
-        <el-col :span="8"><strong>Телефон:</strong></el-col>
-        <el-col :span="16">{{ user.phone }}</el-col>
-
-        <el-col :span="8"><strong>Роль:</strong></el-col>
-        <el-col :span="16">{{ user.role }}</el-col>
-      </el-row>
-
-      <el-button
-        type="primary"
-        @click="openProfileEditModal"
-        class="edit-button"
-      >
-        Редактировать профиль
-      </el-button>
-      <el-button type="danger" @click="logout" class="logout-button">
-        Выйти
-      </el-button>
-
-      <el-dialog
-        v-model="profileEditDialogVisible"
-        title="Редактировать профиль"
-      >
-        <EditProfileForm v-model="profileEditForm" />
-        <template #footer>
-          <el-button @click="closeModal">Отмена</el-button>
-          <el-button type="primary" @click="submitProfileEdit">
+  <div class="page profile-page">
+    <div class="profile-panel">
+      <div class="profile-header">
+        <div class="title">Информация о Вас:</div>
+        <div class="profile-actions">
+          <el-button
+            v-if="!editMode"
+            class="btn-logout"
+            plain
+            type="danger"
+            @click="handleLogout"
+          >
+            Выйти
+          </el-button>
+          <el-button
+            v-if="!editMode"
+            class="btn-edit"
+            type="default"
+            @click="enableEdit"
+          >
+            Редактировать
+          </el-button>
+          <el-button
+            v-if="editMode"
+            class="btn-cancel"
+            plain
+            @click="cancelEdit"
+          >
+            Отменить
+          </el-button>
+          <el-button
+            v-if="editMode"
+            class="btn-save"
+            type="primary"
+            :loading="auth.isLoading"
+            @click="saveProfile"
+          >
             Сохранить
           </el-button>
-        </template>
-      </el-dialog>
+        </div>
+      </div>
+      <el-form
+        ref="profileForm"
+        :model="form"
+        label-position="top"
+        class="profile-form"
+        :disabled="!editMode"
+        @submit.prevent
+      >
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="Имя">
+              <el-input v-model="form.name" autocomplete="off" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="Телефон">
+              <el-input v-model="form.phone" autocomplete="off" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="Электронная почта">
+              <el-input v-model="form.email" autocomplete="off" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, computed, onMounted } from "vue";
+<script setup lang="ts">
+import { ref, reactive, onMounted, watch } from "vue";
 import { useAuthStore } from "@/store/useAuthStore";
-import EditProfileForm from "@/components/EditProfileForm.vue";
-import { isValidEmail } from "@/utils/validation";
-import { ElNotification } from "element-plus";
+import { ElMessageBox, ElMessage } from "element-plus";
 import type { User } from "@/types";
+import { useRouter } from "vue-router";
 
-type ProfileEditForm = Partial<User>;
+interface ProfileForm {
+  name: string;
+  phone: string;
+  email: string;
+}
+const keys = ["name", "phone", "email"] as const;
 
-export default defineComponent({
-  name: "ProfileView",
-  components: { EditProfileForm },
-  setup() {
-    const authStore = useAuthStore();
-    const user = computed(() => authStore.user!);
-
-    const profileEditDialogVisible = ref(false);
-    const profileEditForm = ref<ProfileEditForm>({});
-
-    // при загрузке страницы сразу подгружаем профиль
-    onMounted(() => {
-      authStore.getUserProfile();
-    });
-
-    function openProfileEditModal() {
-      profileEditForm.value = {
-        name: user.value.name,
-        email: user.value.email,
-        phone: user.value.phone,
-      };
-      profileEditDialogVisible.value = true;
-    }
-
-    function closeModal() {
-      profileEditDialogVisible.value = false;
-    }
-
-    async function submitProfileEdit() {
-      const email = profileEditForm.value.email || "";
-      if (!isValidEmail(email)) {
-        ElNotification.error("Некорректный email");
-        return;
-      }
-      try {
-        await authStore.updateUserProfile(profileEditForm.value);
-        ElNotification.success("Профиль успешно обновлен");
-        closeModal();
-      } catch (e: any) {
-        ElNotification.error(
-          e?.response?.data?.message || "Не удалось обновить профиль"
-        );
-      }
-    }
-
-    async function logout() {
-      await authStore.logout();
-    }
-
-    return {
-      user,
-      profileEditDialogVisible,
-      profileEditForm,
-      openProfileEditModal,
-      closeModal,
-      submitProfileEdit,
-      logout,
-    };
-  },
+const auth = useAuthStore();
+const editMode = ref(false);
+const router = useRouter();
+const form = reactive<ProfileForm>({
+  name: "",
+  phone: "",
+  email: "",
 });
+const initialForm = ref<ProfileForm>({ ...form });
+
+onMounted(async () => {
+  await auth.getUserProfile();
+  fillFormFromUser();
+  initialForm.value = { ...form };
+});
+
+watch(
+  () => auth.user,
+  () => {
+    fillFormFromUser();
+    initialForm.value = { ...form };
+  }
+);
+
+function fillFormFromUser() {
+  const user = auth.user as User | null;
+  form.name = user?.name || "";
+  form.phone = user?.phone || "";
+  form.email = user?.email || "";
+}
+function enableEdit() {
+  editMode.value = true;
+}
+function cancelEdit() {
+  for (const key of keys) {
+    form[key] = initialForm.value[key];
+  }
+  editMode.value = false;
+}
+
+async function saveProfile() {
+  const payload: Partial<ProfileForm> = {};
+  for (const key of keys) {
+    if (form[key] !== initialForm.value[key]) {
+      payload[key] = form[key];
+    }
+  }
+  if (!form.name || !form.email) {
+    ElMessage.error("Имя и почта обязательны");
+    return;
+  }
+  try {
+    const ok = await auth.updateUserProfile(payload);
+    if (ok) {
+      ElMessage.success("Профиль успешно обновлён");
+      editMode.value = false;
+      initialForm.value = { ...form };
+    }
+  } catch (e: any) {
+    // Универсальная обработка ошибок
+    const msg =
+      e?.response?.data?.message || e?.message || "Не удалось обновить профиль";
+    ElMessage.error(msg);
+  }
+}
+
+function handleLogout() {
+  ElMessageBox.confirm("Вы действительно хотите выйти?", "Выход", {
+    confirmButtonText: "Да",
+    cancelButtonText: "Отмена",
+    type: "warning",
+  })
+    .then(() => {
+      auth.logout();
+      ElMessage.success("Вы вышли из аккаунта");
+      router.push("/login");
+    })
+    .catch(() => {});
+}
 </script>
 
 <style scoped>
-.profile-container {
+.profile-page {
+  min-height: 100vh;
+  background: #f2f2f2;
+  padding: 24px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
+  align-items: flex-start;
 }
-.profile-card {
-  width: 800px;
-  margin-bottom: 20px;
+.profile-panel {
+  width: 98vw;
+  max-width: 1200px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 32px 24px 32px;
+  margin: 0 auto;
+  box-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.07);
 }
-.edit-button {
-  margin-top: 20px;
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
 }
-.logout-button {
-  margin-top: 20px;
-  background-color: #ff4d4f;
-  color: white;
+.profile-header h1 {
+  font-size: 38px;
+  font-weight: 900;
+  margin-bottom: 24px;
+}
+.profile-actions {
+  display: flex;
+  gap: 12px;
+}
+.btn-logout {
+  color: #bb5b5b;
+  border-color: #bb5b5b;
+  background: #fff;
+  font-weight: 500;
+  border-radius: 8px;
+}
+.btn-edit {
+  background: #a1a1a1;
+  color: #ffff;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+}
+.btn-cancel {
+  color: #ff5227;
+  border-color: #ff5227;
+  background: #fff;
+  font-weight: 500;
+  border-radius: 8px;
+}
+.btn-save {
+  background: #ff5227;
+  color: #fff;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+}
+.profile-form {
+  margin-top: 0;
 }
 </style>

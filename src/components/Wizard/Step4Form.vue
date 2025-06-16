@@ -1,7 +1,20 @@
+```vue
 <template>
   <div class="step">
-    <div v-if="isLoading">Загрузка доступных слотов...</div>
-    <div v-else-if="availableSlots.length === 0">Нет доступных слотов</div>
+    <el-form label-position="top">
+      <el-form-item label="Комментарий (необязательно)">
+        <el-input
+          v-model="form.comments"
+          type="textarea"
+          placeholder="Введите комментарий к записи"
+          @input="updateForm"
+        />
+      </el-form-item>
+    </el-form>
+    <div v-if="workingHoursStore.isLoading">Загрузка доступных слотов...</div>
+    <div v-else-if="workingHoursStore.availableSlots.length === 0">
+      Нет доступных слотов
+    </div>
     <div v-else v-for="date in uniqueDates" :key="date" class="date-block">
       <h4 class="date-title">{{ formatDate(date) }}</h4>
       <div class="times-list">
@@ -12,7 +25,7 @@
             'time-button',
             { selected: form.workingHourId === slot.workingHourId },
           ]"
-          @click="selectSlot(slot.workingHourId, date, slot.startTime)"
+          @click="selectSlot(slot.workingHourId, slot.date, slot.startTime)"
           plain
         >
           {{ slot.startTime }}
@@ -26,16 +39,9 @@
 import { ref, watch, onMounted, computed } from "vue";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import axios from "axios";
-
-interface WizardForm {
-  districtId?: number | null;
-  directionId?: number | null;
-  employeeId?: number | null;
-  date?: string | null;
-  time?: string | null;
-  workingHourId?: number | null;
-}
+import { useWorkingHoursStore } from "@/store/useWorkingHoursStore";
+import { notifyError } from "@/utils/notify";
+import type { WizardForm } from "@/types";
 
 interface WorkingHourSlot {
   workingHourId: number;
@@ -49,62 +55,109 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: WizardForm): void;
 }>();
 
-const form = ref<WizardForm>({ workingHourId: null, date: null, time: null });
-const availableSlots = ref<WorkingHourSlot[]>([]);
-const isLoading = ref(false);
+const workingHoursStore = useWorkingHoursStore();
+const form = ref<WizardForm>({
+  districtId: null,
+  categoryId: null,
+  directionId: null,
+  employeeId: null,
+  date: null,
+  time: null,
+  workingHourId: null,
+  comments: "",
+});
 
+// Синхронизация с props.modelValue
+watch(
+  () => props.modelValue,
+  (newValue, oldValue) => {
+    console.log("Step4Form: Updated modelValue:", newValue);
+    // Сохраняем текущие значения слота, чтобы избежать перезаписи
+    if (
+      newValue.districtId !== oldValue?.districtId ||
+      newValue.employeeId !== oldValue?.employeeId
+    ) {
+      form.value = {
+        ...newValue,
+        workingHourId: null,
+        date: null,
+        time: null,
+        comments: newValue.comments || form.value.comments,
+      };
+      emit("update:modelValue", { ...form.value });
+    } else {
+      form.value = { ...newValue };
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+// Загрузка слотов при монтировании
 onMounted(() => {
+  console.log("Step4Form mounted:", props.modelValue);
   if (props.modelValue.employeeId && props.modelValue.districtId) {
-    fetchAvailableSlots();
+    workingHoursStore.fetchAvailableSlots({
+      employeeId: props.modelValue.employeeId,
+      districtId: props.modelValue.districtId,
+    });
+  } else {
+    notifyError("Выберите отдел и сотрудника на предыдущих шагах");
   }
 });
 
+// Ограниченный watch для employeeId и districtId
 watch(
   () => [props.modelValue.employeeId, props.modelValue.districtId],
-  ([newEmployeeId, newDistrictId]) => {
-    if (newEmployeeId && newDistrictId) {
-      fetchAvailableSlots();
+  ([newEmployeeId, newDistrictId], [oldEmployeeId, oldDistrictId]) => {
+    console.log("Step4Form: Watch employeeId/districtId:", {
+      newEmployeeId,
+      newDistrictId,
+    });
+    if (newEmployeeId !== oldEmployeeId || newDistrictId !== oldDistrictId) {
+      workingHoursStore.clearAvailableSlots();
+      form.value.workingHourId = null;
+      form.value.date = null;
+      form.value.time = null;
+      emit("update:modelValue", { ...form.value });
+      if (newEmployeeId && newDistrictId) {
+        workingHoursStore.fetchAvailableSlots({
+          employeeId: newEmployeeId,
+          districtId: newDistrictId,
+        });
+      }
     }
-  }
+  },
+  { immediate: false }
 );
 
-async function fetchAvailableSlots() {
-  isLoading.value = true;
-  try {
-    const { data } = await axios.get<WorkingHourSlot[]>(
-      "/working-hours/available",
-      {
-        params: {
-          employeeId: props.modelValue.employeeId,
-          districtId: props.modelValue.districtId,
-        },
-      }
-    );
-    availableSlots.value = data;
-  } catch (e: any) {
-    console.error("Error fetching available slots:", e);
-    availableSlots.value = [];
-  } finally {
-    isLoading.value = false;
-  }
-}
-
 const uniqueDates = computed(() => {
-  return [...new Set(availableSlots.value.map((slot) => slot.date))].sort();
+  const dates = [
+    ...new Set(workingHoursStore.availableSlots.map((slot) => slot.date)),
+  ].sort();
+  console.log("Step4Form: Unique dates:", dates);
+  return dates;
 });
 
 const slotsByDate = computed(() => {
-  return availableSlots.value.reduce((acc, slot) => {
+  const slots = workingHoursStore.availableSlots.reduce((acc, slot) => {
     if (!acc[slot.date]) acc[slot.date] = [];
     acc[slot.date].push(slot);
     return acc;
   }, {} as Record<string, WorkingHourSlot[]>);
+  console.log("Step4Form: Slots by date:", slots);
+  return slots;
 });
 
 function selectSlot(workingHourId: number, date: string, time: string) {
+  console.log("Step4Form: Slot selected:", { workingHourId, date, time });
   form.value.workingHourId = workingHourId;
   form.value.date = date;
   form.value.time = time;
+  emit("update:modelValue", { ...form.value });
+}
+
+function updateForm() {
+  console.log("Step4Form: Form updated:", form.value);
   emit("update:modelValue", { ...form.value });
 }
 
@@ -112,6 +165,7 @@ function formatDate(date: string): string {
   try {
     return format(new Date(date), "d MMMM yyyy", { locale: ru });
   } catch {
+    console.warn("Invalid date format:", date);
     return date;
   }
 }
@@ -140,4 +194,8 @@ function formatDate(date: string): string {
   color: #fff;
   border-color: #ff552e;
 }
+.el-button + .el-button {
+  margin-left: 0px !important;
+}
 </style>
+```
