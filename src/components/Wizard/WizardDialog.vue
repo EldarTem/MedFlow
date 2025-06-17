@@ -3,8 +3,13 @@
   <el-dialog
     :model-value="visible"
     class="wizard-dialog"
-    width="600px"
+    width="800px"
     :before-close="closeDialog"
+    style="
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 2px 20px 0 rgba(39, 45, 51, 0.15);
+    "
   >
     <template #header>
       <div class="wizard-header">
@@ -29,15 +34,22 @@
     />
 
     <template #footer>
-      <el-button v-if="currentStep > 1" @click="prevStep">Назад</el-button>
+      <el-button
+        v-if="currentStep > 1"
+        @click="prevStep"
+        size="large"
+        class="btn-cancel"
+        >Назад</el-button
+      >
       <el-button
         v-if="currentStep < stepsCount"
-        type="primary"
+        class="btn-save"
+        size="large"
         @click="nextStep"
       >
         Далее
       </el-button>
-      <el-button v-else type="primary" @click="submit">
+      <el-button v-else @click="submit" size="large" class="btn-save">
         {{ finishText }}
       </el-button>
     </template>
@@ -261,7 +273,7 @@ async function submit() {
     await sessionStore.createSession(payload);
     const newSessionId =
       sessionStore.sessions[sessionStore.sessions.length - 1].id;
-    notifySuccess("Запись успешно создана");
+
     clearFormData();
     emit("submit", newSessionId);
     emit("update:visible", false);
@@ -284,17 +296,54 @@ const finishText = props.finishText || "Записаться";
   display: flex;
   flex-direction: column;
   padding: 28px 38px 15px;
+  color: #4d4e4f;
 }
 .wizard-title {
-  font-size: 16px;
+  font-size: 26px;
   font-weight: 500;
   margin-bottom: 8px;
 }
+.wizard-subtitle {
+  font-size: 20px;
+}
+.btn-cancel {
+  color: #ff5227;
+  border-color: #ff5227;
+  background: #fff;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 10px 50px;
+}
+.btn-cancel:hover {
+  color: #f36a48;
+  border-color: #f36a48;
+  background: #fff;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 10px 50px;
+}
+.btn-save {
+  background: #ff5227;
+  color: #fff;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 50px;
+}
+.btn-save:hover {
+  background: #f36a48;
+  color: #fff;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 50px;
+}
 .progress-container {
-  width: 100%;
+  width: 800px;
   height: 4px;
   background: #eee;
   overflow: hidden;
+  margin-left: -16px;
 }
 .progress-bar {
   height: 100%;
@@ -302,9 +351,29 @@ const finishText = props.finishText || "Записаться";
   width: 0;
   transition: width 0.3s ease;
 }
+.wizard-dialog {
+  width: 100%;
+}
 .wizard-dialog .el-dialog__header {
   padding: 0;
   border-bottom: none;
+}
+
+.option-item {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: #4d4e4f;
+  background-color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border-color: #fff;
 }
 </style>
 ```

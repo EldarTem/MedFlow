@@ -5,7 +5,21 @@ export interface User {
   role: 'user' | 'employee' | 'local_admin' | 'super_admin';
   phone?: string;
 }
-
+export interface Employee {
+  id?: number;
+  lastName: string;
+  name: string;
+  middleName: string;
+  city: string;
+  birthDate: string;
+  phone: string;
+  email: string;
+  specialization: string;
+  department: string;
+  experience: string;
+  biography: string;
+  certificates: string[];
+}
 export interface AuthResponse {
   token: string;
   user: User;
@@ -127,14 +141,18 @@ export interface CreateNotificationPayload {
 
 export interface Session {
   id: number;
-  user_id: number;
-  district_id: number;
-  direction_id: number;
   working_hour_id: number;
   status: 'booked' | 'canceled' | 'completed';
-  comments?: string;
-  created_at: string;
-  updated_at: string;
+  specific_date: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  direction_name: string;
+  doctor: {
+    id: number;
+    name: string;
+  };
+  address: string;
 }
 
 export interface UpdateSessionPayload {

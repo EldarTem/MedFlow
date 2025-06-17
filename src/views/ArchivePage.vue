@@ -2,7 +2,7 @@
   <div class="page archive-page">
     <div v-if="sessionStore.isLoading" class="loading">Загрузка...</div>
     <div v-else>
-      <div class="title">Запишитесь снова!</div>
+      <div class="title">Архив записей</div>
       <div v-if="paginatedRecords.length">
         <div class="subtitle">Ваши прошедшие записи:</div>
         <RecordCard
@@ -53,9 +53,6 @@ interface Doctor {
 
 interface Session {
   id: number;
-  user_id: number;
-  district_id: number;
-  direction_id: number;
   working_hour_id: number;
   status:
     | "booked"
@@ -63,17 +60,13 @@ interface Session {
     | "completed"
     | "in_progress"
     | "pending_confirmation";
-  comments?: string;
-  created_at: string;
-  updated_at: string;
-  address?: string;
-  direction_name?: string;
+  specific_date: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  direction_name: string;
   doctor?: Doctor;
-  name?: string;
-  specific_date?: string;
-  start_time?: string;
-  end_time?: string;
-  day_of_week?: string;
+  address?: string;
 }
 
 interface WizardData {
@@ -97,15 +90,17 @@ const pageSize = ref(10);
 const showModal = ref(false);
 const wizardData = ref<WizardData>({});
 
-const ARCHIVE_STATUSES = ["completed", "cancelled"];
+const ARCHIVE_STATUSES = ["completed", "canceled"];
 const filteredRecords = computed(() => {
   const arr = Array.isArray(sessionStore.sessions) ? sessionStore.sessions : [];
   return arr
-    .filter((s: Session) => ARCHIVE_STATUSES.includes(s.status))
+    .filter((s: Session, _index: number, _array: Session[]) =>
+      ARCHIVE_STATUSES.includes(s.status)
+    )
     .map((s: Session) => ({
       id: s.id,
       title: s.direction_name || "Без направления",
-      with: s.doctor?.name || s.name || "Сотрудник",
+      with: s.doctor?.name || "Сотрудник",
       address: s.address || "Не указано",
       time:
         s.specific_date && s.start_time
@@ -133,7 +128,7 @@ function mapStatusRu(status: string) {
   switch (status) {
     case "completed":
       return "завершена";
-    case "cancelled":
+    case "canceled":
       return "пропущена";
     default:
       return status;
@@ -172,6 +167,7 @@ onMounted(async () => {
   await sessionStore.fetchSessions();
 });
 </script>
+
 <style scoped>
 .page.archive-page {
   padding: 24px;

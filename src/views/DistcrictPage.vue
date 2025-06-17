@@ -1,8 +1,14 @@
 <template>
   <div class="page">
-    <div class="title">Список клиентов</div>
-    <div class="subtitle">Полный список клиентов:</div>
-
+    <div class="title">Мой отдел</div>
+    <div class="subtitle">Информация по данному отделу:</div>
+    <el-row :gutter="20">
+      <el-col :span="8">
+        <el-form-item label="Имя">
+          <el-input />
+        </el-form-item>
+      </el-col>
+    </el-row>
     <BilletCard
       v-for="employee in employees"
       :key="employee.id"

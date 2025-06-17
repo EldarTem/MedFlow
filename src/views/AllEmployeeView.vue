@@ -4,11 +4,11 @@
     <div class="subtitle">Полный список сотрудников:</div>
 
     <BilletCard
-      v-for="trainer in trainers"
-      :key="trainer.id"
-      :name="trainer.name"
+      v-for="employee in employees"
+      :key="employee.id"
+      :name="employee.name"
       :icon="adminIcon"
-      @click="openModal(trainer)"
+      @click="openModal(employee)"
     />
 
     <EmployeeModal
@@ -25,46 +25,47 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAdminStore } from "@/store/useAdminStore";
 import { useUiStore } from "@/store/useUiStore";
 import EmployeeModal from "@/components/Modals/EmployeeModal.vue";
 import BilletCard from "@/components/Cards/BilletCard.vue";
 import Loader from "@/components/Loader.vue";
 import adminIcon from "@/assets/icons/people_icon.svg";
-import { Employee } from "@/types";
+import type { User } from "@/types";
 
-const authStore = useAuthStore();
+const adminStore = useAdminStore();
 const uiStore = useUiStore();
 
 const showModal = ref(false);
 const currentId = ref<number | null>(null);
-const selected = ref<Partial<Employee>>({});
+const selected = ref<Partial<User>>({});
 
 const cities = ["Симферополь", "Москва", "Севастополь"];
-const trainers = computed(() => authStore.clients);
+const employees = computed(() => adminStore.users);
 
 onMounted(() => {
-  // Заменили роль 'local_admin' на 'employee'
-  authStore.fetchAllUsers(1, 10, "employee");
+  adminStore.fetchUsers({ role: "employee", page: 1, limit: 10 });
 });
 
-async function openModal(trainer: { id: number }) {
-  currentId.value = trainer.id;
+async function openModal(employee: { id: number }) {
+  currentId.value = employee.id;
   try {
-    const data = await authStore.fetchUserById(trainer.id);
-    selected.value = {
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-    };
-    showModal.value = true;
+    const data = await adminStore.getUserById(employee.id);
+    if (data) {
+      selected.value = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+      };
+      showModal.value = true;
+    }
   } catch {}
 }
 
-async function handleSave(updated: Partial<Employee>) {
+async function handleSave(updated: Partial<User>) {
   if (currentId.value == null) return;
   try {
-    await authStore.updateUserById(currentId.value, updated);
+    await adminStore.updateUser(currentId.value, updated);
     showModal.value = false;
   } catch {}
 }

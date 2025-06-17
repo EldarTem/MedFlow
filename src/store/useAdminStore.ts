@@ -108,7 +108,6 @@ export const useAdminStore = defineStore('admin', () => {
         payload
       );
       notifySuccess(data.message);
-      // Обновляем список пользователей, если он уже загружен
       if (users.value.length) {
         await fetchUsers();
       }

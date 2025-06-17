@@ -1,15 +1,14 @@
-<!-- src/views/AllAdminView.vue -->
 <template>
   <div class="page">
     <div class="title">Список администраторов</div>
     <div class="subtitle">Полный список администраторов:</div>
 
     <BilletCard
-      v-for="admin in admins"
-      :key="admin.id"
-      :name="admin.name"
+      v-for="employee in employees"
+      :key="employee.id"
+      :name="employee.name"
       :icon="adminIcon"
-      @click="openModal(admin)"
+      @click="openModal(employee)"
     />
 
     <EmployeeModal
@@ -26,45 +25,47 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAdminStore } from "@/store/useAdminStore";
 import { useUiStore } from "@/store/useUiStore";
 import EmployeeModal from "@/components/Modals/EmployeeModal.vue";
 import BilletCard from "@/components/Cards/BilletCard.vue";
 import Loader from "@/components/Loader.vue";
 import adminIcon from "@/assets/icons/people_icon.svg";
-import { Employee } from "@/types";
+import type { User } from "@/types";
 
-const authStore = useAuthStore();
+const adminStore = useAdminStore();
 const uiStore = useUiStore();
 
 const showModal = ref(false);
 const currentId = ref<number | null>(null);
-const selected = ref<Partial<Employee>>({});
+const selected = ref<Partial<User>>({});
 
 const cities = ["Симферополь", "Москва", "Севастополь"];
-const admins = computed(() => authStore.clients);
+const employees = computed(() => adminStore.users);
 
 onMounted(() => {
-  authStore.fetchAllUsers(1, 10, "local_admin");
+  adminStore.fetchUsers({ role: "local_admin", page: 1, limit: 10 });
 });
 
-async function openModal(admin: { id: number }) {
-  currentId.value = admin.id;
+async function openModal(employee: { id: number }) {
+  currentId.value = employee.id;
   try {
-    const data = await authStore.fetchUserById(admin.id);
-    selected.value = {
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-    };
-    showModal.value = true;
+    const data = await adminStore.getUserById(employee.id);
+    if (data) {
+      selected.value = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+      };
+      showModal.value = true;
+    }
   } catch {}
 }
 
-async function handleSave(updated: Partial<Employee>) {
+async function handleSave(updated: Partial<User>) {
   if (currentId.value == null) return;
   try {
-    await authStore.updateUserById(currentId.value, updated);
+    await adminStore.updateUser(currentId.value, updated);
     showModal.value = false;
   } catch {}
 }

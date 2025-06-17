@@ -18,11 +18,10 @@ export const useDistrictStore = defineStore('district', () => {
       const { data } = await api.get<District[] | { districts: District[] }>(
         '/districts'
       );
-      console.log('Districts API response:', data);
       districts.value = Array.isArray(data) ? data : data.districts || [];
-      console.log('Assigned districts:', districts.value);
+      
     } catch (e: any) {
-      console.error('Fetch districts error:', e);
+      
       notifyError(e.response?.data?.message || 'Ошибка загрузки районов');
       districts.value = [];
     } finally {

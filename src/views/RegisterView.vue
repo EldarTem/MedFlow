@@ -1,4 +1,3 @@
-<!-- src/views/RegisterView.vue -->
 <template>
   <div class="auth-container">
     <div class="auth-bg">
@@ -60,7 +59,7 @@
             <el-input
               v-model="registerForm.phone"
               placeholder="+7 (___) ___-__-__"
-              prefix-icon="Phone"
+              :prefix-icon="Phone"
               clearable
               @input="onPhoneInput"
             />
@@ -69,7 +68,7 @@
             <el-input
               v-model="registerForm.email"
               placeholder="ivanov@example.com"
-              prefix-icon="UserFilled"
+              :prefix-icon="UserFilled"
               clearable
             />
           </el-form-item>
@@ -80,7 +79,7 @@
               :type="passwordVisible ? 'text' : 'password'"
               v-model="registerForm.password"
               placeholder="Придумайте пароль"
-              prefix-icon="Lock"
+              :prefix-icon="Lock"
               clearable
             >
               <template #suffix>
@@ -122,7 +121,7 @@
             <el-col :span="12">
               <el-form-item label="Номер" prop="passportNumber">
                 <el-input
-                  ref="passportNumber"
+                  ref="passportNumberRef"
                   v-model="registerForm.passportNumber"
                   placeholder="______"
                   maxlength="6"
@@ -146,7 +145,7 @@
               native-type="submit"
               size="large"
               class="auth-button"
-              :loading="loading"
+              :loading="authStore.isLoading"
             >
               Зарегистрироваться
             </el-button>
@@ -162,173 +161,142 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, reactive, ref, nextTick } from "vue";
+<script setup lang="ts">
+import { reactive, ref, nextTick } from "vue";
 import { useAuthStore } from "@/store/useAuthStore";
 import { UserFilled, Lock, View, Hide, Phone } from "@element-plus/icons-vue";
-import { ElRow, ElCol, ElLoading, FormInstance, FormRules } from "element-plus";
+import { ElLoading } from "element-plus";
+import type { FormInstance, FormRules } from "element-plus";
 
-export default defineComponent({
-  name: "RegisterView",
-  components: {
-    UserFilled,
-    Lock,
-    Phone,
-    ElRow,
-    ElCol,
-  },
-  setup() {
-    const authStore = useAuthStore();
-    const registerFormRef = ref<FormInstance>();
-    const registerForm = reactive({
-      surname: "",
-      name: "",
-      patronymic: "",
-      dateOfBirth: "",
-      city: "",
-      phone: "",
-      email: "",
-      password: "",
-      documentType: "",
-      passportSeries: "",
-      passportNumber: "",
-      consent: false,
-    });
-    const passwordVisible = ref(false);
-    const loading = ref(false);
-
-    const rules: FormRules = {
-      surname: [
-        { required: true, message: "Введите фамилию", trigger: "blur" },
-      ],
-      name: [{ required: true, message: "Введите имя", trigger: "blur" }],
-      patronymic: [
-        { required: true, message: "Введите отчество", trigger: "blur" },
-      ],
-      dateOfBirth: [
-        {
-          required: true,
-          message: "Выберите дату рождения",
-          trigger: "change",
-        },
-      ],
-      city: [{ required: true, message: "Укажите город", trigger: "blur" }],
-      phone: [{ required: true, message: "Введите телефон", trigger: "blur" }],
-      email: [
-        { required: true, message: "Введите email", trigger: "blur" },
-        {
-          type: "email",
-          message: "Неверный формат email",
-          trigger: ["blur", "change"],
-        },
-      ],
-      password: [
-        { required: true, message: "Введите пароль", trigger: "blur" },
-      ],
-      documentType: [
-        {
-          required: true,
-          message: "Выберите тип документа",
-          trigger: "change",
-        },
-      ],
-      passportSeries: [
-        {
-          required: true,
-          message: "Введите серию паспорта",
-          trigger: "blur",
-        },
-        {
-          pattern: /^\d{4}$/,
-          message: "Серия должна быть из 4 цифр",
-          trigger: "blur",
-        },
-      ],
-      passportNumber: [
-        {
-          required: true,
-          message: "Введите номер паспорта",
-          trigger: "blur",
-        },
-        {
-          pattern: /^\d{6}$/,
-          message: "Номер должен быть из 6 цифр",
-          trigger: "blur",
-        },
-      ],
-      consent: [
-        {
-          validator: (_: any, value: boolean, cb: any) => {
-            value ? cb() : cb(new Error("Необходимо согласие"));
-          },
-          trigger: "change",
-        },
-      ],
-    };
-
-    const togglePassword = () => {
-      passwordVisible.value = !passwordVisible.value;
-    };
-
-    const onPhoneInput = () => {
-      registerForm.phone = formatPhone(registerForm.phone);
-    };
-
-    const formatPhone = (value: string): string => {
-      let digits = value.replace(/\D/g, "");
-      if (!digits.startsWith("7")) digits = "7" + digits;
-      let fmt = "+7";
-      if (digits.length > 1) fmt += " (" + digits.slice(1, 4);
-      if (digits.length >= 5) fmt += ") " + digits.slice(4, 7);
-      if (digits.length >= 8) fmt += "-" + digits.slice(7, 9);
-      if (digits.length >= 10) fmt += "-" + digits.slice(9, 11);
-      return fmt;
-    };
-
-    const onSeriesInput = async () => {
-      if (registerForm.passportSeries.replace(/\D/g, "").length === 4) {
-        await nextTick();
-        (registerFormRef.value?.$refs.passportNumber as HTMLElement)?.focus();
-      }
-    };
-
-    const handleRegister = () => {
-      registerFormRef.value?.validate(async (valid) => {
-        if (!valid) return;
-        loading.value = true;
-        const loader = ElLoading.service({
-          text: "Загрузка...",
-          background: "rgba(0,0,0,0.3)",
-        });
-        // вызываем store.register в соответствии с объявленной сигнатурой
-        await authStore.register(
-          registerForm.name,
-          registerForm.email,
-          registerForm.password,
-          registerForm.phone
-        );
-        loading.value = false;
-        loader.close();
-      });
-    };
-
-    // Чтобы TS увидел иконки в шаблоне
-    return {
-      registerForm,
-      registerFormRef,
-      rules,
-      handleRegister,
-      passwordVisible,
-      togglePassword,
-      onPhoneInput,
-      onSeriesInput,
-      formatPhone,
-      loading,
-      Hide,
-      View,
-    };
-  },
+const authStore = useAuthStore();
+const registerFormRef = ref<FormInstance>();
+const registerForm = reactive({
+  surname: "",
+  name: "",
+  patronymic: "",
+  dateOfBirth: "",
+  city: "",
+  phone: "",
+  email: "",
+  password: "",
+  documentType: "",
+  passportSeries: "",
+  passportNumber: "",
+  consent: false,
 });
+const passwordVisible = ref(false);
+const passportNumberRef = ref<HTMLElement>();
+
+const rules: FormRules = {
+  surname: [{ required: true, message: "Введите фамилию", trigger: "blur" }],
+  name: [{ required: true, message: "Введите имя", trigger: "blur" }],
+  patronymic: [
+    { required: true, message: "Введите отчество", trigger: "blur" },
+  ],
+  dateOfBirth: [
+    {
+      required: true,
+      message: "Выберите дату рождения",
+      trigger: "change",
+    },
+  ],
+  city: [{ required: true, message: "Укажите город", trigger: "blur" }],
+  phone: [{ required: true, message: "Введите телефон", trigger: "blur" }],
+  email: [
+    { required: true, message: "Введите email", trigger: "blur" },
+    {
+      type: "email",
+      message: "Неверный формат email",
+      trigger: ["blur", "change"],
+    },
+  ],
+  password: [{ required: true, message: "Введите пароль", trigger: "blur" }],
+  documentType: [
+    {
+      required: true,
+      message: "Выберите тип документа",
+      trigger: "change",
+    },
+  ],
+  passportSeries: [
+    {
+      required: true,
+      message: "Введите серию паспорта",
+      trigger: "blur",
+    },
+    {
+      pattern: /^\d{4}$/,
+      message: "Серия должна быть из 4 цифр",
+      trigger: "blur",
+    },
+  ],
+  passportNumber: [
+    {
+      required: true,
+      message: "Введите номер паспорта",
+      trigger: "blur",
+    },
+    {
+      pattern: /^\d{6}$/,
+      message: "Номер должен быть из 6 цифр",
+      trigger: "blur",
+    },
+  ],
+  consent: [
+    {
+      validator: (_: any, value: boolean, cb: any) => {
+        value ? cb() : cb(new Error("Необходимо согласие"));
+      },
+      trigger: "change",
+    },
+  ],
+};
+
+const togglePassword = () => {
+  passwordVisible.value = !passwordVisible.value;
+};
+
+const onPhoneInput = () => {
+  registerForm.phone = formatPhone(registerForm.phone);
+};
+
+const formatPhone = (value: string): string => {
+  let digits = value.replace(/\D/g, "");
+  if (!digits.startsWith("7")) digits = "7" + digits;
+  let fmt = "+7";
+  if (digits.length > 1) fmt += " (" + digits.slice(1, 4);
+  if (digits.length >= 5) fmt += ") " + digits.slice(4, 7);
+  if (digits.length >= 8) fmt += "-" + digits.slice(7, 9);
+  if (digits.length >= 10) fmt += "-" + digits.slice(9, 11);
+  return fmt;
+};
+
+const onSeriesInput = async () => {
+  if (registerForm.passportSeries.replace(/\D/g, "").length === 4) {
+    await nextTick();
+    passportNumberRef.value?.focus();
+  }
+};
+
+const handleRegister = () => {
+  registerFormRef.value?.validate(async (valid) => {
+    if (!valid) return;
+    const loader = ElLoading.service({
+      text: "Загрузка...",
+      background: "rgba(0,0,0,0.3)",
+    });
+    try {
+      await authStore.signup({
+        name: `${registerForm.surname} ${registerForm.name} ${registerForm.patronymic}`,
+        email: registerForm.email,
+        password: registerForm.password,
+        phone: registerForm.phone,
+      });
+    } finally {
+      loader.close();
+    }
+  });
+};
 </script>
 
 <style scoped>
@@ -341,7 +309,7 @@ export default defineComponent({
   align-items: center;
 }
 
-.auth-bg {
+.auth bg {
   width: 100%;
   height: 100%;
   background: linear-gradient(to bottom right, #f0f4f7, #d9e2ec);

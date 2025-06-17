@@ -26,7 +26,7 @@
         :class="['option-item', { selected: form.directionId === dir.id }]"
         @click="selectDirection(dir.id)"
       >
-        <i class="el-icon-location"></i>
+        <span><img src="/src/assets/icons/doc_logo.svg" alt="" /></span>
         {{ dir.name }}
       </li>
       <li v-if="directionStore.isLoading">Загрузка направлений...</li>
@@ -130,13 +130,21 @@ function selectDirection(id: number) {
   margin-top: 16px;
 }
 .option-item {
+  font-size: 20px;
+  gap: 15px;
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  margin-bottom: 8px;
+  margin-bottom: 24px;
   border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
+  transition: background 0.2s;
+  color: #4d4e4f;
+  background-color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border-color: #fff;
 }
 .option-item i {
   margin-right: 8px;
@@ -145,5 +153,9 @@ function selectDirection(id: number) {
 .option-item.selected {
   border-color: #ff552e;
   background: rgba(255, 85, 46, 0.1);
+}
+
+.el-form-item__label {
+  font-size: 40px !important;
 }
 </style>

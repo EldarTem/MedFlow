@@ -90,11 +90,17 @@ export default defineComponent({
           email: loginForm.email,
           password: loginForm.password,
         });
-        // После успешного входа редирект на профиль или главную
-        router.push({ name: "Profile" });
-      } catch (e) {
-        // Ошибку показывает notifyError из стора, здесь можно не дублировать
-      }
+        const role = authStore.user?.role;
+        if (role === "user") {
+          router.push("/records");
+        } else if (role === "employee") {
+          router.push("/employee-records");
+        } else if (role === "local_admin" || role === "super_admin") {
+          router.push("/clients");
+        } else {
+          router.push("/");
+        }
+      } catch (e) {}
     };
 
     return {

@@ -1,22 +1,12 @@
 ```vue
 <template>
   <div class="step">
-    <el-form label-position="top">
-      <el-form-item label="Комментарий (необязательно)">
-        <el-input
-          v-model="form.comments"
-          type="textarea"
-          placeholder="Введите комментарий к записи"
-          @input="updateForm"
-        />
-      </el-form-item>
-    </el-form>
     <div v-if="workingHoursStore.isLoading">Загрузка доступных слотов...</div>
     <div v-else-if="workingHoursStore.availableSlots.length === 0">
       Нет доступных слотов
     </div>
     <div v-else v-for="date in uniqueDates" :key="date" class="date-block">
-      <h4 class="date-title">{{ formatDate(date) }}</h4>
+      <h3 class="date-title">{{ formatDate(date) }}</h3>
       <div class="times-list">
         <el-button
           v-for="slot in slotsByDate[date]"
@@ -156,11 +146,6 @@ function selectSlot(workingHourId: number, date: string, time: string) {
   emit("update:modelValue", { ...form.value });
 }
 
-function updateForm() {
-  console.log("Step4Form: Form updated:", form.value);
-  emit("update:modelValue", { ...form.value });
-}
-
 function formatDate(date: string): string {
   try {
     return format(new Date(date), "d MMMM yyyy", { locale: ru });
@@ -181,13 +166,25 @@ function formatDate(date: string): string {
 }
 .times-list {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 10px;
 }
 .time-button {
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 20px;
+  padding: 18px 34px;
+  color: #4d4e4f;
+  background-color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border-color: #fff;
+}
+.time-button:hover {
+  background: #ff552e;
+  color: #fff;
+  border-color: #ff552e;
 }
 .time-button.selected {
   background: #ff552e;

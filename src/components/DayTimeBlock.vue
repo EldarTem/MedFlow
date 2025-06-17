@@ -8,7 +8,8 @@
           :key="index"
           class="time-slot"
           type="primary"
-          size="small"
+          size="large"
+          @click="$emit('edit', { slot })"
         >
           {{ formatTime(slot.start_time) }}
         </el-button>
@@ -21,13 +22,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent, PropType, computed } from "vue";
 
 interface TimeSlot {
   id: number;
-  employee_id: number;
-  day_of_week: string;
-  specific_date: string | null;
   start_time: string;
   end_time: string;
 }
@@ -37,39 +35,19 @@ export default defineComponent({
   props: {
     day: {
       type: String as PropType<string>,
-      required: true,
-      validator: (value: string) =>
-        [
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday",
-          "понедельник",
-          "вторник",
-          "среда",
-          "четверг",
-          "пятница",
-          "суббота",
-          "воскресенье",
-          "пн",
-          "вт",
-          "ср",
-          "чт",
-          "пт",
-          "сб",
-          "вс",
-        ].some((day) => value.toLowerCase().includes(day.toLowerCase())),
+      default: "",
+    },
+    date: {
+      type: String as PropType<string>,
+      default: "",
     },
     slots: {
       type: Array as PropType<TimeSlot[]>,
       default: () => [],
     },
   },
-  methods: {
-    normalizeDayName(day: string): string | null {
+  setup(props) {
+    const normalizeDayName = (day: string): string | null => {
       const dayMap: Record<string, string> = {
         monday: "Monday",
         tuesday: "Tuesday",
@@ -95,13 +73,11 @@ export default defineComponent({
       };
 
       const lowerDay = day.toLowerCase();
-      for (const [key, value] of Object.entries(dayMap)) {
-        if (lowerDay.includes(key)) return value;
-      }
-      return null;
-    },
-    getNextDayOfWeek(fromDate: Date, dayOfWeek: string): Date {
-      const dayIndexMap: Record<string, number> = {
+      return dayMap[lowerDay] || null;
+    };
+
+    const getNextDayOfWeek = (fromDate: Date, dayOfWeek: string): Date => {
+      const dayNumbers: Record<string, number> = {
         Sunday: 0,
         Monday: 1,
         Tuesday: 2,
@@ -113,15 +89,16 @@ export default defineComponent({
 
       const resultDate = new Date(fromDate);
       const currentDay = fromDate.getDay();
-      const targetDay = dayIndexMap[dayOfWeek];
+      const targetDay = dayNumbers[dayOfWeek] ?? 0;
 
       let diff = targetDay - currentDay;
       if (diff <= 0) diff += 7;
 
       resultDate.setDate(fromDate.getDate() + diff);
       return resultDate;
-    },
-    getShortDayName(day: string): string {
+    };
+
+    const getShortDayName = (day: string): string => {
       const shortNames: Record<string, string> = {
         Monday: "пн",
         Tuesday: "вт",
@@ -132,42 +109,89 @@ export default defineComponent({
         Sunday: "вс",
       };
       return shortNames[day] || day;
-    },
-    // Метод для форматирования времени (убираем секунды)
-    formatTime(time: string): string {
-      if (!time) return ""; // Если времени нет, возвращаем пустую строку
+    };
+
+    const formatTime = (time: string): string => {
+      if (!time) return "";
       const [hours, minutes] = time.split(":");
       return `${hours}:${minutes}`;
-    },
-  },
-  computed: {
-    formattedDate(): string {
-      const normalizedDay = this.normalizeDayName(this.day);
-      if (!normalizedDay) return "Неверный день недели";
+    };
+
+    const getWeekDay = (date: Date): string => {
+      const days = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      return days[date.getDay()];
+    };
+
+    const formattedDate = computed((): string => {
+      console.log("DayTimeBlock props:", {
+        day: props.day,
+        date: props.date,
+        slots: props.slots,
+      });
+      if (props.date) {
+        try {
+          const date = new Date(props.date);
+          const dateStr = date.toLocaleDateString("ru-RU", {
+            day: "numeric",
+            month: "long",
+          });
+          const dayName = getShortDayName(props.day || getWeekDay(date));
+          return `${dateStr} (${dayName})`;
+        } catch (e) {
+          console.error("Ошибка форматирования даты:", e);
+          return "Некорректная дата";
+        }
+      }
+
+      const normalizedDay = normalizeDayName(props.day);
+      if (!normalizedDay) return props.day || "Unknown";
 
       const today = new Date();
-      const nextDate = this.getNextDayOfWeek(today, normalizedDay);
+      const nextDate = getNextDayOfWeek(today, normalizedDay);
 
       try {
         const dateStr = nextDate.toLocaleDateString("ru-RU", {
           day: "numeric",
           month: "long",
         });
-
-        const shortDayName = this.getShortDayName(normalizedDay);
+        const shortDayName = getShortDayName(normalizedDay);
         return `${dateStr} (${shortDayName})`;
       } catch (e) {
         console.error("Ошибка форматирования даты:", e);
         return "Некорректная дата";
       }
-    },
-    formattedSlots(): TimeSlot[] {
-      return this.slots.filter((slot: TimeSlot) => slot.start_time);
-    },
-    hasTimeSlots(): boolean {
-      return this.formattedSlots.length > 0;
-    },
+    });
+
+    const formattedSlots = computed((): TimeSlot[] => {
+      return props.slots
+        .filter((slot: TimeSlot) => slot.start_time && slot.end_time)
+        .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    });
+
+    const hasTimeSlots = computed((): boolean => {
+      return formattedSlots.value.length > 0;
+    });
+
+    return {
+      normalizeDayName,
+      getNextDayOfWeek,
+      getShortDayName,
+      formatTime,
+      getWeekDay,
+      formattedDate,
+      formattedSlots,
+      hasTimeSlots,
+    };
   },
+  emits: ["edit", "delete"],
 });
 </script>
 
@@ -176,7 +200,22 @@ export default defineComponent({
   margin-bottom: 20px;
 }
 
+.time-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .time-slot {
-  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 20px;
+  padding: 18px 34px;
+  color: #4d4e4f;
+  background-color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border-color: #fff;
 }
 </style>

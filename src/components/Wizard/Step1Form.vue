@@ -7,7 +7,7 @@
         :class="['option-item', { selected: form.districtId === dept.id }]"
         @click="select(dept.id)"
       >
-        <i class="el-icon-location"></i>
+        <span><img src="/src/assets/icons/marker_logo.svg" alt="" /></span>
         {{ dept.name }}
       </li>
       <li v-if="districtStore.isLoading">Загрузка отделов...</li>
@@ -68,14 +68,21 @@ function select(id: number) {
   padding: 0;
 }
 .option-item {
+  font-size: 20px;
+  gap: 15px;
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  margin-bottom: 8px;
+  margin-bottom: 24px;
   border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
+  color: #4d4e4f;
+  background-color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border-color: #fff;
 }
 .option-item i {
   margin-right: 8px;

@@ -1,9 +1,13 @@
 <template>
   <div class="page">
-    <div class="title">Список отделов</div>
-    <div class="subtitle">Полный список отделов:</div>
+    <div class="title">Список отделений</div>
+    <div class="subtitle">Полный список отделений:</div>
 
-    <BilletCard v-for="gym in gyms" :key="gym.id" :name="gym.name" />
+    <BilletCard
+      v-for="district in districts"
+      :key="district.id"
+      :name="district.name"
+    />
 
     <Loader :loading="uiStore.isLoading" />
   </div>
@@ -11,16 +15,16 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { useGymStore } from "@/store/useGymStore";
+import { useDistrictStore } from "@/store/useDistrictStore";
 import { useUiStore } from "@/store/useUiStore";
 import BilletCard from "@/components/Cards/BilletCard.vue";
 
-const gymStore = useGymStore();
+const districtStore = useDistrictStore();
 const uiStore = useUiStore();
 
 onMounted(() => {
-  gymStore.fetchGyms();
+  districtStore.fetchDistricts();
 });
 
-const gyms = computed(() => gymStore.gyms);
+const districts = computed(() => districtStore.districts);
 </script>

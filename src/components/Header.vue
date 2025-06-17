@@ -80,16 +80,17 @@ const menu = computed(() => {
       ];
     case "employee":
       return [
-        { path: "/employee-schedule", label: "График" },
-        { path: "/records", label: "Записи" },
-        { path: "/archive", label: "Архив" },
+        { path: "/employee-records", label: "Мои записи" },
+        { path: "/archive-employee", label: "Архив записей" },
+        { path: "/employee-schedule", label: "Мой график" },
         { path: "/profile", label: "Аккаунт" },
       ];
     case "local_admin":
       return [
         { path: "/clients", label: "Клиенты" },
-        { path: "/gym-trainers", label: "Сотрудники" },
+        { path: "/employee", label: "Сотрудники" },
         { path: "/archive", label: "Архив" },
+        { path: "/distcrict", label: "Мой отдел" },
         { path: "/profile", label: "Аккаунт" },
       ];
     case "super_admin":
@@ -123,7 +124,6 @@ const moveSlider = () => {
   setTimeout(updateSlider, 50);
 };
 
-// Watch на изменение маршрута
 watch(
   () => route.fullPath,
   () => {

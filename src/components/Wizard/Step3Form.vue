@@ -27,8 +27,9 @@
         ]"
         @click="selectEmployee(employee.user_id)"
       >
-        <i class="el-icon-user"></i>
+        <span><img src="/src/assets/icons/people_icon.svg" alt="" /></span>
         {{ employee.name }}
+
         <span v-if="employee.message" class="no-details">{{
           employee.message
         }}</span>
@@ -116,22 +117,29 @@ function selectEmployee(employeeId: number) {
   padding: 0;
 }
 .option-item {
+  font-size: 20px;
+  gap: 15px;
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  margin-bottom: 8px;
+  margin-bottom: 24px;
   border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
+  color: #4d4e4f;
+  background-color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border-color: #fff;
 }
 .option-item i {
   margin-right: 8px;
   color: #409eff;
 }
 .option-item.selected {
-  border-color: #409eff;
-  background: rgba(64, 158, 255, 0.1);
+  border-color: #ff552e;
+  background: rgba(255, 85, 46, 0.1);
 }
 .no-details {
   font-size: 0.9em;

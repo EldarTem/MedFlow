@@ -19,12 +19,13 @@ export const useWorkingHoursStore = defineStore('workingHours', () => {
   async function fetchWorkingHours() {
     isLoading.value = true;
     try {
-      const { data } = await api.get<{ workingHours: WorkingHour[] }>(
-        '/working-hours'
-      );
-      workingHours.value = data.workingHours;
-    } catch (e: any) {
-      notifyError(e.response?.data?.message || 'Ошибка загрузки расписания');
+      const { data } = await api.get<WorkingHour[]>('/working-hours');
+      console.log('API response data:', data);
+      workingHours.value = data;
+    } catch (e) {
+      console.error('Error fetching working hours:', e);
+      notifyError('Ошибка загрузки расписания');
+      workingHours.value = [];
     } finally {
       isLoading.value = false;
     }
@@ -36,7 +37,6 @@ export const useWorkingHoursStore = defineStore('workingHours', () => {
   }) {
     isLoading.value = true;
     try {
-      // Проверяем, что сотрудник привязан к району
       const adminStore = useAdminStore();
       const employees = await adminStore.getEmployeesByDistrict(
         params.districtId
@@ -46,43 +46,30 @@ export const useWorkingHoursStore = defineStore('workingHours', () => {
         throw new Error('Сотрудник не найден в указанном районе');
       }
 
-      // Запрос к существующему эндпоинту /working-hours/:id
       const { data } = await api.get<WorkingHour[]>(
         `/working-hours/${params.employeeId}`
       );
-
-      // Логируем полученные данные для отладки
       console.log('Raw working hours:', data);
 
-      // Фильтруем доступные слоты и преобразуем в формат WorkingHourSlot
       const slots = data
         .filter((wh) => {
           if (!wh.specific_date) return false;
-          // Сравниваем только даты, игнорируя время
           const slotDate = startOfDay(new Date(wh.specific_date));
           const currentDate = startOfDay(new Date());
           return slotDate >= currentDate;
         })
         .map((wh) => ({
           workingHourId: wh.id,
-          // Преобразуем specific_date в формат YYYY-MM-DD
           date: format(new Date(wh.specific_date!), 'yyyy-MM-dd'),
-          startTime: wh.start_time.slice(0, 5), // Убираем секунды, оставляем HH:mm
-          endTime: wh.end_time.slice(0, 5), // Убираем секунды, оставляем HH:mm
+          startTime: wh.start_time.slice(0, 5),
+          endTime: wh.end_time.slice(0, 5),
         }));
 
       availableSlots.value = slots;
       console.log('Filtered available slots:', slots);
     } catch (e: any) {
-      console.error(
-        'Error fetching available slots:',
-        e.response?.data || e.message
-      );
-      notifyError(
-        e.message ||
-          e.response?.data?.message ||
-          'Ошибка загрузки доступных слотов'
-      );
+      console.error('Error fetching available slots:', e);
+      notifyError(e.message || 'Ошибка загрузки доступных слотов');
       availableSlots.value = [];
     } finally {
       isLoading.value = false;
@@ -96,9 +83,7 @@ export const useWorkingHoursStore = defineStore('workingHours', () => {
       workingHours.value.push(data);
       notifySuccess('Рабочее время добавлено');
     } catch (e: any) {
-      notifyError(
-        e.response?.data?.message || 'Ошибка при добавлении рабочего времени'
-      );
+      notifyError('Ошибка при добавлении рабочего времени');
     } finally {
       isLoading.value = false;
     }
@@ -118,9 +103,7 @@ export const useWorkingHoursStore = defineStore('workingHours', () => {
       if (idx !== -1) workingHours.value[idx] = data;
       notifySuccess('Рабочее время обновлено');
     } catch (e: any) {
-      notifyError(
-        e.response?.data?.message || 'Ошибка при обновлении рабочего времени'
-      );
+      notifyError('Ошибка при обновлении рабочего времени');
     } finally {
       isLoading.value = false;
     }
@@ -130,12 +113,10 @@ export const useWorkingHoursStore = defineStore('workingHours', () => {
     isLoading.value = true;
     try {
       await api.delete(`/working-hours/${id}`);
-      workingHours.value = workingHours.value.filter((w) => w.id === id);
+      workingHours.value = workingHours.value.filter((w) => w.id !== id);
       notifySuccess('Рабочее время удалено');
     } catch (e: any) {
-      notifyError(
-        e.response?.data?.message || 'Ошибка при удалении рабочего времени'
-      );
+      notifyError('Ошибка при удалении рабочего времени');
     } finally {
       isLoading.value = false;
     }

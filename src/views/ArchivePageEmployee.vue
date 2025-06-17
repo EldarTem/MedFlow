@@ -1,21 +1,16 @@
 <template>
-  <div class="page">
+  <div class="page archive-page">
     <div v-if="sessionStore.isLoading" class="loading">Загрузка...</div>
     <div v-else>
-      <div class="title">
-        Добро пожаловать, <span>{{ userName }}</span
-        >!
-      </div>
+      <div class="title">Запишитесь снова!</div>
       <div v-if="paginatedRecords.length">
-        <div class="subtitle">Вот Ваши ближайшие записи:</div>
+        <div class="subtitle">Ваши прошедшие записи:</div>
         <RecordCard
           v-for="rec in paginatedRecords"
           :key="rec.id"
           :record="rec"
-          @cancel="handleCancel"
           @rebook="handleRebook"
         />
-
         <div class="pagination-controls">
           <el-pagination
             v-model:current-page="currentPage"
@@ -28,22 +23,28 @@
           />
         </div>
       </div>
-      <div class="subtitle" v-else>У вас нет текущих записей.</div>
+      <div class="subtitle" v-else>Архив пуст.</div>
     </div>
+    <WizardDialog
+      :visible="showModal"
+      @update:visible="showModal = $event"
+      @submit="handleSubmit"
+      :subtitles="subtitles"
+      :stepComponents="stepComponents"
+      :initialData="wizardData"
+    />
   </div>
-  <ConfirmModal
-    v-model="showCancelDialog"
-    :message="'Вы уверены, что хотите отменить запись?'"
-    :loading="cancelLoading"
-    @confirm="confirmCancel"
-  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useSessionStore } from "@/store/useSessionStore";
-import RecordCard from "@/components/Cards/RecordCard.vue";
-import ConfirmModal from "@/components/Modals/ConfirmModal.vue";
+import RecordCard from "@/components/Cards/RecordCardEmpl.vue";
+import WizardDialog from "@/components/Wizard/WizardDialog.vue";
+import Step1Form from "@/components/Wizard/Step1Form.vue";
+import Step2Form from "@/components/Wizard/Step2Form.vue";
+import Step3Form from "@/components/Wizard/Step3Form.vue";
+import Step4Form from "@/components/Wizard/Step4Form.vue";
 
 interface Doctor {
   id: number;
@@ -68,27 +69,33 @@ interface Session {
   address?: string;
 }
 
-const userName = ref("Пользователь");
-const sessionStore = useSessionStore();
+interface WizardData {
+  id?: number;
+  title?: string;
+  with?: string;
+  address?: string;
+  time?: string;
+  status?: string;
+  day_of_week?: string;
+  departmentId?: number;
+  categoryId?: number;
+  serviceId?: number;
+  employeeId?: number;
+  date?: string;
+}
 
+const sessionStore = useSessionStore();
 const currentPage = ref(1);
 const pageSize = ref(10);
+const showModal = ref(false);
+const wizardData = ref<WizardData>({});
 
-const ACTIVE_STATUSES = [
-  "pending_confirmation",
-  "in_progress",
-  "booked",
-  "completed",
-];
-const showCancelDialog = ref(false);
-const cancelLoading = ref(false);
-const cancelId = ref<number | null>(null);
-
+const ARCHIVE_STATUSES = ["completed", "canceled"];
 const filteredRecords = computed(() => {
   const arr = Array.isArray(sessionStore.sessions) ? sessionStore.sessions : [];
   return arr
     .filter((s: Session, _index: number, _array: Session[]) =>
-      ACTIVE_STATUSES.includes(s.status)
+      ARCHIVE_STATUSES.includes(s.status)
     )
     .map((s: Session) => ({
       id: s.id,
@@ -109,18 +116,20 @@ const paginatedRecords = computed(() => {
   return filteredRecords.value.slice(start, start + pageSize.value);
 });
 
+const subtitles = [
+  "Выберите отдел",
+  "Выберите категорию и услугу",
+  "Выберите сотрудника",
+  "Выберите дату и время",
+];
+const stepComponents = [Step1Form, Step2Form, Step3Form, Step4Form];
+
 function mapStatusRu(status: string) {
   switch (status) {
-    case "pending_confirmation":
-      return "ожидает подтверждения";
-    case "in_progress":
-      return "в процессе";
-    case "booked":
-      return "скоро";
     case "completed":
-      return "подтверждена";
+      return "завершена";
     case "canceled":
-      return "отменена";
+      return "пропущена";
     default:
       return status;
   }
@@ -135,47 +144,47 @@ function handleCurrentChange(val: number) {
   currentPage.value = val;
 }
 
-function handleCancel(id: number) {
-  cancelId.value = id;
-  showCancelDialog.value = true;
+function handleRebook(record: WizardData) {
+  wizardData.value = {
+    ...record,
+    departmentId: undefined,
+    categoryId: undefined,
+    serviceId: undefined,
+    employeeId: undefined,
+    date: undefined,
+    time: undefined,
+  };
+  showModal.value = true;
 }
 
-function handleRebook(record: any) {
-  console.log(`Повторная запись:`, record);
-}
-
-async function confirmCancel() {
-  if (!cancelId.value) return;
-  cancelLoading.value = true;
-  try {
-    await sessionStore.cancelSession(cancelId.value);
-    await sessionStore.fetchSessions();
-  } finally {
-    cancelLoading.value = false;
-    showCancelDialog.value = false;
-    cancelId.value = null;
-  }
+function handleSubmit(sessionId: number) {
+  console.log("ArchivePage: Form submitted with sessionId:", sessionId);
+  showModal.value = false;
+  wizardData.value = {};
 }
 
 onMounted(async () => {
   await sessionStore.fetchSessions();
-  const stored = localStorage.getItem("userData");
-  if (stored) {
-    try {
-      const userData = JSON.parse(stored);
-      userName.value = userData.name || "Пользователь";
-    } catch {
-      userName.value = "Пользователь";
-    }
-  }
 });
 </script>
 
 <style scoped>
-.page {
-  padding: 20px;
+.page.archive-page {
+  padding: 24px;
+  background: #fff;
+  border-radius: 10px;
 }
-
+h2 {
+  margin-bottom: 24px;
+}
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.empty {
+  color: #666;
+}
 .loading {
   text-align: center;
   font-size: 18px;

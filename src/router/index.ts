@@ -44,16 +44,22 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: 'Аккаунт' },
       },
       {
-        path: 'workouts',
-        name: 'Workouts',
-        component: () => import('@/views/WorkoutsView.vue'),
-        meta: { title: 'Workouts', allowedRoles: ['user', 'employee'] },
+        path: 'distcrict',
+        name: 'Distcrict',
+        component: () => import('@/views/DistcrictPage.vue'),
+        meta: { title: 'Отдел' },
       },
       {
         path: 'employee-schedule',
         name: 'TrainerSchedule',
         component: () => import('@/views/EmployeeScheduleView.vue'),
-        meta: { title: 'Расписание', allowedRoles: ['employee'] },
+        meta: { title: 'Мой график', allowedRoles: ['employee'] },
+      },
+      {
+        path: 'employee-records',
+        name: 'EmployeeRecords',
+        component: () => import('@/views/MyRecordsEmployee.vue'),
+        meta: { title: 'Мои записи', allowedRoles: ['employee'] },
       },
       {
         path: 'departments',
@@ -83,6 +89,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'Archive',
         component: () => import('@/views/ArchivePage.vue'),
         meta: { title: 'Архив' },
+      },
+      {
+        path: 'archive-employee',
+        name: 'ArchiveEmployee',
+        component: () => import('@/views/ArchivePageEmployee.vue'),
+        meta: { title: 'Архив записей' },
       },
       {
         path: 'employee',
